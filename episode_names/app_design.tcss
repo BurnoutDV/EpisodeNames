@@ -1,0 +1,49 @@
+.compact_input {
+    width: 50%;
+}
+
+NewEpisode, EditEpisode, CreateEditProject {
+    align: center middle;
+    background: $secondary-background;
+}
+
+.center_vert {
+    padding: 0 1;
+    width: 80%;
+    height: auto;
+    max-height: 24;
+    border: thick $background 80%;
+    background: $surface;
+}
+
+Horizontal.adjust {
+    align: center middle;
+    Button {
+        margin: 0 3;
+    }
+}
+
+.title {
+    padding: 1 1;
+}
+
+.sidebar {
+    width: 32;
+}
+
+DebugLog {
+    align: center middle;
+    background: rgba(0,128,0,0.5);
+}
+
+#log_overlay {
+    height: 80%;
+    border: thick $background 80%;
+    background: $surface;
+}
+
+.small_input {
+    border:none;
+    height: 1;
+    background: $panel;
+}
