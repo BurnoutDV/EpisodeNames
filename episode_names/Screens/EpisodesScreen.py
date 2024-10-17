@@ -20,11 +20,19 @@
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
+from datetime import datetime, date
+import time
+from select import select
+from typing import Iterable
+
+import pyperclip
+
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea
+from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList
+from textual.widgets.option_list import Option, Separator
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Utility.i18n import i18n
@@ -35,6 +43,7 @@ class EpisodeScreen(Screen):
     BINDINGS = [
         Binding(key="ctrl+d", action="new_entry", description=i18n['New Entry']),
         Binding(key="ctrl+e", action="edit_entry", description=i18n['Edit Entry']),
+        Binding(key="ctrl+a", action="assign_template", description=i18n['Assign Template']),
         Binding(key="ctrl+t,ctrl+q", action="copy_text", description=i18n['Copy Text'])
     ]
 
@@ -104,9 +113,9 @@ class EpisodeScreen(Screen):
                    .get())
             last_episode = Folge.from_episode(res)
             this = new_episode(last_episode)
-            self.app.push_screen(EditCreateEpisode(this), handle_new_entry_response)
+            self.app.push_screen(CreateEditEpisode(this), handle_new_entry_response)
         except Episode.DoesNotExist:
-            self.app.push_screen(EditCreateEpisode(None, self.current_project), handle_new_entry_response)
+            self.app.push_screen(CreateEditEpisode(None, self.current_project), handle_new_entry_response)
 
     def _action_edit_entry(self):
         def handle_edit_entry_response(this: Folge or None):
@@ -119,7 +128,7 @@ class EpisodeScreen(Screen):
         if row_key:
             this = Episode.as_Folge_by_uid(row_key.value)
             if this:
-                self.app.push_screen(EditCreateEpisode(this), handle_edit_entry_response)
+                self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
                 return
 
     def _action_copy_text(self):
@@ -139,6 +148,18 @@ class EpisodeScreen(Screen):
         # APP Copy to clipboard doesnt work everywhere OSC 52:
         # https://darren.codes/posts/textual-copy-paste/
         # App.copy_to_clipboard(this)
+
+    def action_assign_template(self):
+        def template_callback(cur_episode: Folge or None):
+            if not cur_episode:
+                return
+            Episode.update_or_create(cur_episode)
+            self._refill_table_with_project(self.current_project)
+
+        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+        if row_key:
+            this = Episode.as_Folge_by_uid(row_key.value)
+            self.app.push_screen(AssignTemplate(this), template_callback)
 
     def _refill_table_with_project(self, p_uid: int):
         # check if project exists
@@ -227,8 +248,88 @@ Disgrace""".splitlines()
     def _action_abort(self):
         self.dismiss(None)
 
+class AssignTemplate(ModalScreen[TextTemplate or None]):
+    BINDINGS = [
+        Binding(key="ctrl+s", action="save", description=i18n['Save']),
+        Binding(key="ctrl+c, esc", action="abort", description=i18n['Cancel'], priority=True)
+    ]
 
-class EditCreateEpisode(ModalScreen[Folge or None]):
+    def __init__(self, hot_episode: Folge):
+        self.current_episode = hot_episode
+        self.cache = dict()
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        self.preview = TextArea("", id="preview_stuff", read_only=True)
+        self.templates = OptionList("", id="template_list", classes="sidebar")
+
+        with Vertical(classes="center_vert"):
+            with Horizontal():
+                yield self.templates
+                yield self.preview
+            with Horizontal(classes="adjust"):
+                yield Button(i18n['Save'], id="save")
+                yield Button(i18n['Cancel'], id="abort")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.fill_options()
+
+    def fill_options(self):
+        self.templates.clear_options()
+        list_of_templates = TextTemplate.dump()
+        if not list_of_templates:
+            return
+        self.cache = {}
+        self.templates.add_option(Option("", id="-1"))
+        # todo add current element here
+        self.templates.add_option(Separator())
+        for each in list_of_templates:
+            self.templates.add_option(Option(each.title, str(each.db_uid)))
+            self.cache[str(each.db_uid)] = each  # Option Index are strings
+        if self.current_episode.db_template > 0:
+            index = self.templates.get_option_index(str(self.current_episode.db_template))
+
+        else:
+            index = self.templates.get_option_index("-1")
+        self.templates.highlighted = index
+        #self.app.write_raw_log(self.cache, "Template Cache")
+
+    def _action_save(self) -> None:
+        pass
+
+    def _action_abort(self) -> None:
+        self.dismiss(None)
+
+    @on(OptionList.OptionSelected, "#template_list")
+    def _list_selected(self, selected: OptionList.OptionHighlighted) -> None:
+        self.app.write_raw_log(selected)
+        if not selected.option_id:
+            return
+        if selected.option_id in self.cache:  # aka a know database variable
+            self.current_episode.db_template = int(selected.option_id)
+            self.dismiss(self.current_episode)
+        if selected.option_id == "-1":
+            self.current_episode.db_template = -1
+            self.dismiss(self.current_episode)
+        # there should be theoretically no other option, but this way it should be written savely?
+
+    @on(OptionList.OptionHighlighted, "#template_list")
+    def _list_highlighted(self, selected: OptionList.OptionHighlighted) -> None:
+        if not selected.option_id:
+            return
+        if selected.option_id in self.cache:
+            self.preview.load_text(self.cache[selected.option_id].pattern)
+
+    @on(Button.Pressed, "#save")
+    def _btn_save(self) -> None:
+        self._action_save()
+
+    @on(Button.Pressed, "#abort")
+    def _btn_abort(self) -> None:
+        self._action_abort()
+
+class CreateEditEpisode(ModalScreen[Folge or None]):
     BINDINGS = [
         Binding(key="ctrl+s", action="save", description=i18n['Save']),
         Binding(key="ctrl+c, esc", action="abort", description=i18n['Cancel'], priority=True)

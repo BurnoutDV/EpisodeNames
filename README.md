@@ -12,7 +12,7 @@ tl;dr: this is a textual testing ground *slash* pattern mine for future projects
 
 On the left a tree view with _all_ my projects, on the right the currently active view of all the episodes. A simple key combination copies the assigned template text to the clipboard (using `pyperclip` currently). There is also a screen to edit templates and projects.
 
-If this is the only thing I wanted I could have just used some scripts that use an SQLite database direct and I would have inputed the data via an database explorer. Or some pre-fabbed input mask. **But** i like TUIs and I cannot lie.
+If this is the only thing I wanted I could have just used some scripts that use an SQLite database directly and I would have inputed the data via an database explorer. Or some pre-fabbed input mask. **But** i like TUIs and I cannot lie.
 
 So here we are now, mostly this is a big learning experience for me to try different TUI design patterns.
 
@@ -30,6 +30,7 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 - [ ] Logic functions that keep internal numbering consistent
 - [ ] Styling - different colors than default
 - [ ] Import/Export of data
+- [ ] Use proper tools for i18n and not some thrown together gobbligob
 
 ## Ideas
 

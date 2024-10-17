@@ -23,13 +23,14 @@
 import time
 from typing import Iterable
 
+from rich.console import RenderableType
 from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical
 from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
-from episode_names.Screens.EpisodesScreen import EpisodeScreen
+from episode_names.Screens.EpisodesScreen import EpisodeScreen, CreateEditProject, CreateEditEpisode
 from episode_names.Screens.TemplateScreen import TemplateScreen
 from episode_names.Utility.i18n import i18n
 
@@ -92,9 +93,9 @@ class EpisodeNames(App):
         yield SystemCommand("Create Project", "Opens the menu for creating new project", self._create_project_menu)
         yield SystemCommand("Edit Project", "Opens the menu for editing the currently selected project", self.bell)
 
-    def write_raw_log(self, object, additional_text=""):
+    def write_raw_log(self, this: RenderableType, additional_text=""):
         self.write_log(f"Raw Object: {additional_text}")
-        self.dummy_log.write(object)
+        self.dummy_log.write(this)
 
     def write_log(self, text):
         delta_time = round(time.time_ns()/1000000 - self.hour_zero,2)

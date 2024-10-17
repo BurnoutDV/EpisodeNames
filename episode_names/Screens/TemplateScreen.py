@@ -47,7 +47,7 @@ class TemplateScreen(Screen):
         self.filter_bar = Input(id="filter", placeholder=i18n['Enter Filter here'], classes="small_input")
         self.templates = Tree("Label", id="template_list")
         self.pattern_name = Input(id="pattern_name", placeholder="Name of the Pattern", disabled=True)
-        self.pattern = TextArea(id="pattern", disabled=True)
+        self.pattern = TextArea(id="pattern", disabled=True, soft_wrap=True, show_line_numbers=True)
         self.current_pattern = None
         self.unsaved_patterns: dict[int, PatternTemplate] = {}
         # TODO: logic for not saved patterns
@@ -104,4 +104,5 @@ class TemplateScreen(Screen):
             return
         self.app.write_raw_log(patterns)
         for each in patterns:
-            self.templates.root.add_leaf(f"{each.title} [#{each.db_uid}-{len(each.pattern)}]", data={'db_uid': each.db_uid})
+            line = f"{each.title} [#{each.db_uid}-{len(each.pattern)}]"
+            self.templates.root.add_leaf(line, data={'db_uid': each.db_uid})
