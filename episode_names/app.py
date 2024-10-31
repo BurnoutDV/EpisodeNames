@@ -30,7 +30,8 @@ from textual.containers import Vertical
 from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
-from episode_names.Screens.EpisodesScreen import EpisodeScreen, CreateEditProject, CreateEditEpisode
+from episode_names.Screens.EpisodesScreen import EpisodeScreen
+from episode_names.Screens.ProjectScreen import CreateEditProject
 from episode_names.Screens.TemplateScreen import TemplateScreen
 from episode_names.Utility.i18n import i18n
 

@@ -2,9 +2,9 @@
     width: 50%;
 }
 
-NewEpisode, EditEpisode, CreateEditProject {
+CreateEditEpisode, CreateEditProject {
     align: center middle;
-    background: $secondary-background;
+    background: rgba(40, 40, 40, 0.5);
 }
 
 .center_vert {
@@ -31,9 +31,34 @@ Horizontal.adjust {
     width: 32;
 }
 
+.max_height {
+    height: 100%;
+}
+
 DebugLog {
     align: center middle;
     background: rgba(0,128,0,0.5);
+}
+
+YesNoBox {
+    align: center middle;
+    background: rgba(96, 0, 0, 0.4);
+}
+
+YesNoBox Vertical {
+    height: 8;
+    width: 50;
+    background: $surface;
+    border: thick $background 100%;
+}
+
+YesNoBox Label {
+    align: center middle;
+}
+
+#tags {
+    height: 5;
+    width: 100%;
 }
 
 #log_overlay {

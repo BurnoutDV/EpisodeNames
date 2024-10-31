@@ -19,6 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
+from typing import Literal
 
 from dataclasses import dataclass
 from datetime import datetime, date
@@ -32,7 +33,7 @@ from peewee import (
     Model,
     SqliteDatabase,
     TextField,
-    CharField,
+    CharField, JOIN,
 )
 
 database_proxy = DatabaseProxy()
@@ -41,8 +42,9 @@ database_proxy = DatabaseProxy()
 class Folge:
     title: str
     db_uid: int = -1 # objects can exists without db connection
-    db_project: int = -1
-    db_template: int = -1
+    db_project: int = 0
+    db_template: int = 0
+    joined_template_title: str | None = None  # this feels not right
     counter1: int = 1
     counter2: int = 0
     session: str = ""
@@ -56,11 +58,15 @@ class Folge:
 
     @staticmethod
     def from_episode(this: 'Episode') -> 'Folge':
+        template_title = None
+        if int(this.template_id) > 0 and hasattr(this.template, "title"):
+            template_title = this.template.title
         return Folge(
             title=this.title,
             db_uid=this.id,
             db_project=this.project_id,
             db_template=this.template_id,
+            joined_template_title=template_title,
             counter1=this.counter1,
             counter2=this.counter2,
             session=this.session,
@@ -90,6 +96,7 @@ class Playlist:
 class PatternTemplate:
     title: str
     pattern: str = ""
+    tags: str = ""
     db_uid: int = -1
 
     @staticmethod
@@ -97,7 +104,8 @@ class PatternTemplate:
         return PatternTemplate(
             title=this.title,
             pattern=this.pattern,
-            db_uid=this.id
+            db_uid=this.id,
+            tags=this.tags  # TODO: implement tags database site
         )
 
 class BaseModel(Model):
@@ -139,7 +147,8 @@ class Project(BaseModel):
                 name=this.title,
                 category=this.category,
                 description=this.description,
-                tags=this.tags
+                tags=this.tags,
+                edit_date=datetime.now
                 )
                .where(Project.id == this.db_uid)
                .execute())
@@ -160,9 +169,13 @@ class Project(BaseModel):
 class TextTemplate(BaseModel):
     title = CharField()
     pattern = TextField()
+    tags = CharField(512)
+
+    edit_date = DateTimeField(default=datetime.now)
+    create_date = DateTimeField(default=datetime.now)
 
     @staticmethod
-    def as_PTemplate_by_uid(uid: int) -> PatternTemplate:
+    def as_PTemplate_by_uid(uid: int) -> PatternTemplate | None:
         try:
             res = TextTemplate.get_by_id(uid)
             return PatternTemplate.from_TextTemplate(res)
@@ -170,8 +183,8 @@ class TextTemplate(BaseModel):
             return None
 
     @staticmethod
-    def dump() -> list[PatternTemplate] or None:
-        res = TextTemplate.select()
+    def dump() -> list[PatternTemplate] | None:
+        res = TextTemplate.select().where(TextTemplate.id > 0)
         if len(res) <= 0:
             return None
         flood = []
@@ -180,23 +193,43 @@ class TextTemplate(BaseModel):
         return flood
 
     @staticmethod
-    def update_or_create(object: PatternTemplate) -> int:
-        if object.db_uid <= 0:
-            return TextTemplate.create_new(object)
+    def get_next_id() -> int:
+        """
+        Returns the current, highest id plus one for reasons
+        One of those methods that could also be written on the fly but I abstracted them anyways
+        :return: the (theoretically) next id
+        """
+        res = (TextTemplate.
+               select(TextTemplate.id).
+               order_by(TextTemplate.id.desc()).
+               limit(1).
+               get())
+        return res.id + 1
+
+    @staticmethod
+    def update_or_create(this: PatternTemplate) -> int:
+        if this.db_uid <= 0:
+            return TextTemplate.create_new(this)
         res = (TextTemplate
                .update(
-                title=object.title,
-                pattern=object.pattern
+                title=this.title,
+                pattern=this.pattern,
+                tags=this.tags,
+                edit_date = datetime.now()
                 )
+               .where(TextTemplate.id == this.db_uid)
                .execute())
         return res
 
     @staticmethod
-    def create_new(object: PatternTemplate) -> int:
+    def create_new(this: PatternTemplate) -> int:
         res = (TextTemplate
                .insert(
-                title=object.title,
-                pattern=object.pattern
+                title=this.title,
+                pattern=this.pattern,
+                tags=this.tags,
+                create_date=datetime.now(),
+                edit_date=datetime.now()
                 )
                .execute())
         return res
@@ -223,8 +256,15 @@ class Episode(BaseModel):
             return None
 
     @staticmethod
-    def by_project(project_id: int) -> list[Folge] or None:
-        res = Episode.select().where(Episode.project_id == project_id)
+    def by_project(project_id: int, order: Literal['asc', 'desc'] = "asc") -> list[Folge] | None:
+        if order == "asc":
+            res = (Episode.select().join(TextTemplate, JOIN.LEFT_OUTER)
+                   .order_by(Episode.counter1.asc())
+                   .where(Episode.project_id == project_id))
+        else:
+            res = (Episode.select().join(TextTemplate, JOIN.LEFT_OUTER)
+                   .order_by(Episode.counter1.desc())
+                   .where(Episode.project_id == project_id))
         if len(res) <= 0:
             return None
         qua_water = []
@@ -232,6 +272,19 @@ class Episode(BaseModel):
             qua_water.append(Folge.from_episode(each))
         return qua_water
 
+    @staticmethod
+    def get_latest(project_id: int) -> Folge | None:
+        """Returns the episode with the highest counter1 among the current project"""
+        try:
+            res = (Episode
+                   .select()
+                   .where(Episode.project == project_id)
+                   .order_by(Episode.counter1.desc())
+                   .limit(1)
+                   .get())
+            return Folge.from_episode(res)
+        except Episode.DoesNotExist:
+            return None
     @staticmethod
     def update_or_create(this: Folge) -> int:
         """

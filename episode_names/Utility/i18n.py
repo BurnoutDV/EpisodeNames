@@ -52,6 +52,15 @@ i18n = LanguageArchive({
     'Name': "Name",
     'Date': "Date",
     'Copy Text': "Copy Text",
+    'Templates': "Templates",
+    'Template Edit': "Template Edit",
+    'Episode': "Episode",
+    'Enter Filter here': "Enter Filter here",
+    'Duplicate Current': "Duplicate Current",
+    'Save Current': "Save Current",
+    'Delete Current': "Delete Current",
+    'Discard Current': "Discard Current",
+    'Switch to Mainscreen': "Switch to Mainscreen",
     'No Template assigned': "No Template assigned/found",
     'Description copied to clipboard': "Description copied to clipboard"
 }) # Cheap Trick to make sure there is always something

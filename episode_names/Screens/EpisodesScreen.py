@@ -23,7 +23,7 @@
 from datetime import datetime, date
 import time
 from select import select
-from typing import Iterable
+from typing import Iterable, Literal
 
 import pyperclip
 
@@ -31,7 +31,8 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList
+from textual.demo import Title
+from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
 from textual.widgets.option_list import Option, Separator
 from textual.screen import ModalScreen, Screen
 
@@ -44,11 +45,12 @@ class EpisodeScreen(Screen):
         Binding(key="ctrl+d", action="new_entry", description=i18n['New Entry']),
         Binding(key="ctrl+e", action="edit_entry", description=i18n['Edit Entry']),
         Binding(key="ctrl+a", action="assign_template", description=i18n['Assign Template']),
-        Binding(key="ctrl+t,ctrl+q", action="copy_text", description=i18n['Copy Text'])
+        Binding(key="ctrl+q", action="copy_text", description=i18n['Copy Text']),
+        Binding(key="ctrl+t", action="copy_tags", description=i18n['Get Tags'])
     ]
 
     def __init__(self):
-        self.current_project = -1
+        self.current_project = None
         super().__init__()
 
     def compose(self) -> ComposeResult:#
@@ -91,7 +93,6 @@ class EpisodeScreen(Screen):
         if not data:
             self.write_log(f"DB does not know project with ID {p_uid}")
             return False
-        self.current_project = p_uid
         self._refill_table_with_project(p_uid)
 
     def _action_new_entry(self):
@@ -104,17 +105,13 @@ class EpisodeScreen(Screen):
             self._refill_table_with_project(self.current_project)  # repaint table
 
         if not self.current_project:
+            self.app.notify(i18n['No currently selected project, cannot create "free" episodes'], severity="warning")
             return False  # handle this somehow visually
-        try:
-            res = (Episode
-                   .select()
-                   .where(Episode.project == self.current_project)
-                   .order_by(Episode.counter1.desc())
-                   .get())
-            last_episode = Folge.from_episode(res)
+        last_episode = Episode.get_latest(self.current_project)
+        if last_episode:
             this = new_episode(last_episode)
             self.app.push_screen(CreateEditEpisode(this), handle_new_entry_response)
-        except Episode.DoesNotExist:
+        else:
             self.app.push_screen(CreateEditEpisode(None, self.current_project), handle_new_entry_response)
 
     def _action_edit_entry(self):
@@ -130,6 +127,15 @@ class EpisodeScreen(Screen):
             if this:
                 self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
                 return
+    def _action_copy_tags(self):
+        if not self.current_project:
+            return
+        tags = Project.as_Playlist_by_uid(self.current_project)
+        if not tags.tags or len(tags.tags) <= 0:
+            self.app.notify(i18n['Current project has no tags'], severity="warning")
+            return
+        pyperclip.copy(tags.tags)
+        self.app.notify(tags.tags, title=i18n['Tags copied to clipboard'])
 
     def _action_copy_text(self):
         row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
@@ -142,7 +148,7 @@ class EpisodeScreen(Screen):
         if not text:
             self.app.notify(f"Cannot create formated text for: \n {str(this)}", title=i18n['No template assigned'])
             return
-        self.write_raw_log(pyperclip.copy(text))
+        pyperclip.copy(text)
         self.app.notify(text, title=i18n['Description copied to clipboard'])
         # todo: make this configurable
         # APP Copy to clipboard doesnt work everywhere OSC 52:
@@ -161,13 +167,29 @@ class EpisodeScreen(Screen):
             this = Episode.as_Folge_by_uid(row_key.value)
             self.app.push_screen(AssignTemplate(this), template_callback)
 
-    def _refill_table_with_project(self, p_uid: int):
+    def _refill_table_with_project(self,
+           p_uid: int,
+           rest_position: None | Literal['above', 'below', 'reset'] = None) -> None:
+        """
+        Redraws the entire table with the new data from the database, if this project ever scales
+        I must probably look into how to update singular cells instead of brute forcing everything
+        everytime
+        :param p_uid:
+        :param rest_position:
+        :return:
+        """
+        #* if Project ID is the same we preserve the cursor position
+        was_selected = None
+        if p_uid == self.current_project:
+            row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+            was_selected = row_key
         # check if project exists
         # get data
-        # display dummy text if none is present
         self.entryview.clear(columns=True)
         self.entryview.show_header = True
-        data_ep = Episode.by_project(p_uid)
+        self.current_project = p_uid  # even for empty sets the project ID is still set
+        data_ep = Episode.by_project(p_uid, order="desc")
+        # display dummy text if none is present
         if not data_ep:
             self.entryview.show_header = False
             self.entryview.add_column("Message")
@@ -176,6 +198,9 @@ class EpisodeScreen(Screen):
         self.entryview.add_columns(*["#", "##", i18n['Session'], i18n['Record Date'], i18n['Title'], i18n['Template']])
         # TODO: concat template name into episode
         for each in data_ep:
+            template = each.db_template
+            if each.joined_template_title:
+                template = each.joined_template_title
             self.entryview.add_row(
                 *[
                     each.counter1,
@@ -183,10 +208,14 @@ class EpisodeScreen(Screen):
                     each.session,
                     each.recording_date.strftime("%d.%m.%Y"),
                     each.title,
-                    each.db_template
+                    template
                 ],
                 key=each.db_uid
             )
+        # highlight the previos cell, I have the sneaking suspicion that this will break somewhen
+        if was_selected and was_selected.value:
+            new_row = self.entryview.get_row_index(was_selected)
+            self.entryview.move_cursor(row=new_row)
 
     def _init_data(self):
         """Retrieves data from database in bulk for first build of the view"""
@@ -211,42 +240,7 @@ class EpisodeScreen(Screen):
                 if each.category != cat:
                     continue
                 current.add_leaf(each.title, data={'db_uid': each.db_uid})
-        self.current_project = first_entry
         self._refill_table_with_project(first_entry)
-
-class CreateEditProject(ModalScreen[Playlist or None]):
-    BINDINGS = [
-        Binding(key="ctrl+s", action="save", description=i18n['Save']),
-        Binding(key="ctrl+c, esc", action="abort", description=i18n['Cancel'])
-    ]
-
-    def __init__(self, initial_project: Playlist or None = None):
-        self.initial_project = initial_project
-        self.current = Playlist("")
-        super().__init__()
-
-    def compose(self) -> ComposeResult:
-        LINES = """Current
-Legacy
-Disgrace""".splitlines()
-        self.title = Input(placeholder=i18n['Name'])
-        self.category = Select((line, line) for line in LINES)
-        self.description = TextArea(id='description')
-
-        with Vertical(classes="center_vert"):
-            yield Label("Creating or Editing Project", classes="title")
-            yield self.title
-            yield self.category
-            yield self.description
-            with Horizontal():
-                yield Button(i18n['Save'], id="save")
-                yield Button(i18n['Cancel'], id="abort")
-
-    def _action_save(self):
-        self.dismiss(self.current)
-
-    def _action_abort(self):
-        self.dismiss(None)
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):
     BINDINGS = [
@@ -261,10 +255,11 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
 
     def compose(self) -> ComposeResult:
         self.preview = TextArea("", id="preview_stuff", read_only=True)
-        self.templates = OptionList("", id="template_list", classes="sidebar")
+        self.templates = OptionList("", id="template_list", classes="sidebar max-height")
 
-        with Vertical(classes="center_vert"):
-            with Horizontal():
+        with Vertical():
+            yield Header(id="headline", icon=None)
+            with Horizontal(classes="max-height"):
                 yield self.templates
                 yield self.preview
             with Horizontal(classes="adjust"):
@@ -273,12 +268,15 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.sub_title = f"{self.current_episode.counter1} - {self.current_episode.title}"
+        self.title = i18n['Assign Template']
         self.fill_options()
 
     def fill_options(self):
         self.templates.clear_options()
         list_of_templates = TextTemplate.dump()
         if not list_of_templates:
+            self.app.notify(f"{i18n['There are no templates']}", )
             return
         self.cache = {}
         self.templates.add_option(Option("", id="-1"))
@@ -295,31 +293,70 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         self.templates.highlighted = index
         #self.app.write_raw_log(self.cache, "Template Cache")
 
+    def save_and_exit(self, template_id: int):
+        self.current_episode.db_template = template_id
+        self.dismiss(self.current_episode)
+
     def _action_save(self) -> None:
-        pass
+        """
+        Reads the current highlighted Index of the OptionList and uses that
+        :return:
+        """
+        index = self.templates.highlighted
+        if not index:
+            self.app.notify(f"AssignTemplate: {i18n['No Option highlighted']}", severity="warning")
+            return
+        try:
+            selection = self.templates.get_option_at_index(index)
+        except OptionList.OptionDoesNotExist:
+            self.app.notify(
+                i18n['There seems to be no option selected'],
+                title=i18n['OptionList Selection Error'],
+                severity="warning"
+            )
+            return
+        self.save_and_exit(selection.id)
 
     def _action_abort(self) -> None:
+        """
+        Simply closes the modal.
+        :return:
+        """
         self.dismiss(None)
 
     @on(OptionList.OptionSelected, "#template_list")
     def _list_selected(self, selected: OptionList.OptionHighlighted) -> None:
+        """
+        When Enter Key pressed, uses that template and instantly closes the modal with the
+        selected options as new template
+        :param selected:
+        :return:
+        """
         self.app.write_raw_log(selected)
         if not selected.option_id:
+            self.app.notify(f"AssignTemplate: {i18n['No Option ID']}", severity="warning")
             return
         if selected.option_id in self.cache:  # aka a know database variable
-            self.current_episode.db_template = int(selected.option_id)
-            self.dismiss(self.current_episode)
+            self.save_and_exit(int(selected.option_id))
         if selected.option_id == "-1":
-            self.current_episode.db_template = -1
-            self.dismiss(self.current_episode)
+            self.save_and_exit(-1)
         # there should be theoretically no other option, but this way it should be written savely?
 
     @on(OptionList.OptionHighlighted, "#template_list")
     def _list_highlighted(self, selected: OptionList.OptionHighlighted) -> None:
+        """
+        Previews the currently highlighted option by displaying the template text in
+        the textarea, information cached. I hope this will never be a problem.
+        :param selected:
+        :return:
+        """
         if not selected.option_id:
+            self.app.notify(f"AssignTemplate: {i18n['No Option ID']}", severity="warning")
             return
         if selected.option_id in self.cache:
             self.preview.load_text(self.cache[selected.option_id].pattern)
+            return
+        self.preview.clear() # defaults to blank slate
 
     @on(Button.Pressed, "#save")
     def _btn_save(self) -> None:
@@ -335,7 +372,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         Binding(key="ctrl+c, esc", action="abort", description=i18n['Cancel'], priority=True)
     ]
 
-    def __init__(self, copy_from: None or Folge = None, p_uid: int = -1):
+    def __init__(self, copy_from: None or Folge = None, p_uid: int = 0):
         self.copy_from = copy_from
         if not self.copy_from and p_uid:
             current_play = Project.as_Playlist_by_uid(p_uid)
@@ -375,6 +412,10 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             self.gui_date.value = self.copy_from.recording_date.strftime("%d.%m.%Y")
             self.gui_counter1.value = str(self.copy_from.counter1)
             self.gui_counter2.value = str(self.copy_from.counter2)
+        else:
+            # there has to be some kind of kind of copy from
+            self.app.notify(i18n['No suiteable creation method for episode found'], severity="error")
+            self.dismiss(None)
 
     def _action_save(self):
         try:

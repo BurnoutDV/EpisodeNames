@@ -20,17 +20,28 @@ So here we are now, mostly this is a big learning experience for me to try diffe
 
 Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me. There is some other experimentation as well. I use the `peewee`ORM for this one, I never touched it before and I saw it in some random project and wanted to try it. I am not so sure if its the right way, but I hope my software stack is sound and allows, if the need arises, to replace everything under the hood.
 
+## How to install
+
+1. Check out git
+2. Change to folder
+3. Create virtual environment `$ python3 -m venv venv`
+4. Activate venv `$ source venv/bin/activate`
+5. `$ pip install -e .` for editable module installation, this should, hopefully resolve all dependencies
+6. `$ python3 episode_names/Utility/order.py` to create dummy data
+7. `$ python3 episode_names/app.py`
+
 ## Todos
 
 - [ ] Making the entire workflow in interface possible
-  - [ ] Creating, Editing, Deleting Templates
-  - [ ] Assigning Templates to Episodes
+  - [x] Creating, Editing, Deleting Templates
+  - [x] Assigning Templates to Episodes
   - [ ] Creating Projects
-
 - [ ] Logic functions that keep internal numbering consistent
 - [ ] Styling - different colors than default
 - [ ] Import/Export of data
 - [ ] Use proper tools for i18n and not some thrown together gobbligob
+- [ ] Use proper user folders
+- [ ] add some cli flags for db folders and stuff (user profiles? why though?)
 
 ## Ideas
 
@@ -38,3 +49,11 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 - [ ] Find title duplicates
 - [ ] save additonal meta data
 - [ ] make the interface more sleek and faster to use for the haxxor experience
+
+## Know Issues
+
+* Cannot duplicate template yet
+* The tags are copied from the project, not the template as of now
+* Some number inconsistency, sometimes -1 is assigned which is a bad way
+* Per default, a new project has no template assigned, which might go haywire. Currently, dummy data creates a manual template 0 which should sidestep this
+* all the database stuff always happens in the current working directory

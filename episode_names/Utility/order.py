@@ -76,6 +76,9 @@ Mo-Do, So auch Live auf Twitch: https://www.twitch.tv/burnoutdv 17-20 Uhr
 Playlist: https://www.youtube.com/playlist?list=PLAFz5ZZJ21wO_nLvLprFRAyxN3YilrARe
 Gold Road Playlist: https://www.youtube.com/playlist?list=PLAFz5ZZJ21wN4zSdcr2GqPesmrdQ--7gj
 Aufnahme vom $$record_date$$ - #$$counter1$$ - ##$$counter2$$"""
+    TextTemplate.create_new(PatternTemplate("Default", "$$counter1$$ - $$title$$"))
+    TextTemplate.update(id = 0).where(TextTemplate.title == "Default").execute()
+    # ^this is slightly cursed, but makes sure id=0 is always the default entry
     t_id = TextTemplate.update_or_create(PatternTemplate("ESO-Gold Road", this))
     first = Folge(
         title="Gefangene des Schicksals",
@@ -136,5 +139,5 @@ def create_description_text(this: Folge) -> str or None:
 
 if __name__ == "__main__":
     init_db()
-    #create_dummy_data()
+    create_dummy_data()
     #print(get_project_episodes(1))

@@ -4,3 +4,5 @@
 episode_names.egg-info/
 episode_names/Screens/__pycache__/
 episode_names/__pycache__/
+*db
+*log
