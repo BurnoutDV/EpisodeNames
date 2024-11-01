@@ -195,7 +195,12 @@ class EpisodeScreen(Screen):
             self.entryview.add_column("Message")
             self.entryview.add_row("No entries for this project")
             return False
-        self.entryview.add_columns(*["#", "##", i18n['Session'], i18n['Record Date'], i18n['Title'], i18n['Template']])
+        self.entryview.add_column("#")
+        self.entryview.add_column("##", key="counter2")
+        self.entryview.add_column(i18n['Session'])
+        self.entryview.add_column(i18n['Record Date'])
+        self.entryview.add_column(i18n['Title'])
+        self.entryview.add_column(i18n['Template'])
         # TODO: concat template name into episode
         for each in data_ep:
             template = each.db_template
@@ -212,6 +217,9 @@ class EpisodeScreen(Screen):
                 ],
                 key=each.db_uid
             )
+        # hide counter2 row when there are now values in there
+        if not Project.has_counter2(self.current_project):
+            self.entryview.remove_column("counter2")  # the only column with a key as of now
         # highlight the previos cell, I have the sneaking suspicion that this will break somewhen
         if was_selected and was_selected.value:
             new_row = self.entryview.get_row_index(was_selected)
@@ -287,7 +295,6 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
             self.cache[str(each.db_uid)] = each  # Option Index are strings
         if self.current_episode.db_template > 0:
             index = self.templates.get_option_index(str(self.current_episode.db_template))
-
         else:
             index = self.templates.get_option_index("-1")
         self.templates.highlighted = index

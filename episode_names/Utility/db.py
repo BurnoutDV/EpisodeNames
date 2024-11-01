@@ -166,6 +166,26 @@ class Project(BaseModel):
                .execute())
         return res
 
+    @staticmethod
+    def has_counter2(project_id: int) -> bool | None:
+        """
+        Checks if the given project has any episodes with counter2, should
+        always return true or false, even if the project doesn't exists, because
+        logically, then the number of entries is zero.
+
+        :param project_id: id of the project
+        :return bool: true if there are any entries, otherwise false
+        """
+        try:
+            res = (Episode
+                   .select(Episode.id)
+                   .where(Episode.project_id == project_id)
+                   .where(Episode.counter2 > 0)
+                   .limit(1))
+            return bool(res.count())
+        except Episode.DoesNotExist:  # this should never happen
+            return None
+
 class TextTemplate(BaseModel):
     title = CharField()
     pattern = TextField()
