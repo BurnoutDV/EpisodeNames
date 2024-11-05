@@ -46,7 +46,7 @@ class EpisodeScreen(Screen):
         Binding(key="ctrl+e", action="edit_entry", description=i18n['Edit Entry']),
         Binding(key="ctrl+a", action="assign_template", description=i18n['Assign Template']),
         Binding(key="ctrl+q", action="copy_text", description=i18n['Copy Text']),
-        Binding(key="ctrl+t", action="copy_tags", description=i18n['Get Tags'])
+        Binding(key="ctrl+t", action="copy_tags", description=i18n['Copy Tags'])
     ]
 
     def __init__(self):
@@ -128,14 +128,25 @@ class EpisodeScreen(Screen):
                 self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
                 return
     def _action_copy_tags(self):
-        if not self.current_project:
+        """
+        Copies tags of the currently selected episode to the clipboard
+        :return: Nothing
+        """
+        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+        if not row_key:
             return
-        tags = Project.as_Playlist_by_uid(self.current_project)
-        if not tags.tags or len(tags.tags) <= 0:
-            self.app.notify(i18n['Current project has no tags'], severity="warning")
+        this = Episode.as_Folge_by_uid(row_key.value)
+        if not this:
             return
-        pyperclip.copy(tags.tags)
-        self.app.notify(tags.tags, title=i18n['Tags copied to clipboard'])
+        that = TextTemplate.as_PTemplate_by_uid(this.db_template)
+        if not that:
+            self.app.notify(i18n['Current episode has no template assigned'], severity="warning")
+            return
+        if not that.tags or len(that.tags) <= 0:
+            self.app.notify(i18n['Current episode template has no tags'], severity="warning")
+            return
+        pyperclip.copy(that.tags)
+        self.app.notify(that.tags, title=i18n['Tags copied to clipboard'])
 
     def _action_copy_text(self):
         row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
