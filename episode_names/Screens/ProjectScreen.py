@@ -22,6 +22,7 @@
 
 from datetime import datetime, date
 import time
+import copy
 from select import select
 from typing import Iterable, Literal
 
@@ -31,13 +32,13 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.demo import Title
 from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
-from textual.widgets.option_list import Option, Separator
+from textual_autocomplete import AutoComplete, Dropdown, DropdownItem, InputState
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Utility.i18n import i18n
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
+from episode_names.Screens.dialogue import YesNoBox
 from episode_names.Utility.order import new_episode, create_description_text
 
 
@@ -48,36 +49,60 @@ class CreateEditProject(ModalScreen[Playlist or None]):
     ]
 
     def __init__(self, initial_project: Playlist or None = None):
+        self.tx_title = i18n['Editing an existing Project']
+        if not initial_project:
+            initial_project = Playlist("", "", "", -1)
+            self.tx_title = i18n['Create a new Project']
         self.initial_project = initial_project
-        self.current = Playlist("")
+        self.current = copy.copy(initial_project)
+        self.categories = [] # init categories as empty list
         super().__init__()
 
     def compose(self) -> ComposeResult:
-        LINES = """Current
-Legacy
-Disgrace""".splitlines()
         self.pr_title = Input(placeholder=i18n['Name'])
-        self.category = Select((line, line) for line in LINES)
-        self.description = TextArea(id='description')
-        self.tags = TextArea(id='tags')
+        self.category = Input(placeholder=i18n['Category'])
+        self.description = TextArea(id='description', soft_wrap=True, show_line_numbers=True)
 
         with Vertical(classes="center_vert"):
-            yield Label("Creating or Editing Project", classes="title")
+            yield Label(self.tx_title, classes="title")
             yield self.pr_title
-            yield self.category
+            yield AutoComplete(
+                self.category,
+                Dropdown(id="autocomplete_dropdown", items=self._update_autocomplete)
+            )
             yield self.description
-            with Horizontal():
+            with Horizontal(classes="adjust"):
                 yield Button(i18n['Save'], id="save")
                 yield Button(i18n['Cancel'], id="abort")
 
-    def _action_save(self):
-        self.current.title = self.pr_title.value
-        self.current.category = self.category.value
-        self.current.tags = self.tags.text
+    def on_mount(self) -> None:
+        self.categories = Project.get_categories()
+        self.pr_title.value = self.initial_project.title
+        self.category.value = self.initial_project.category
+        self.description.load_text(self.initial_project.description)
+
+    def _action_save(self) -> None:
+        self._update_internal_playlist()
         self.dismiss(self.current)
 
-    def _action_abort(self):
+    def _action_no_save(self):
         self.dismiss(None)
+
+    def _action_abort(self) -> None:
+        self._update_internal_playlist()
+        self.dismiss(None)
+        return None
+        # currently broken
+        # TODO: fix save message later
+        if self.current == self.initial_project:
+            self.dismiss(None)
+            return
+
+        def callback_box(status: bool):
+            if status:
+                self.dismiss(None)
+
+        self.app.push_screen(YesNoBox(i18n['Data has changed, you really want to abort?']), callback_box)
 
     @on(Button.Pressed, "#save")
     def _btn_save(self) -> None:
@@ -86,3 +111,20 @@ Disgrace""".splitlines()
     @on(Button.Pressed, "#abort")
     def _btn_abort(self) -> None:
         self._action_abort()
+
+    def _update_internal_playlist(self) -> None:
+        self.current.title = self.pr_title.value
+        self.current.category = self.category.value
+        self.current.description = self.description.text
+
+    def _update_autocomplete(self, input_state: InputState) -> list[DropdownItem]:
+        items = []
+        for each in self.categories:
+            items.append(
+                DropdownItem(each)
+            )
+        # stolen from example
+        matches = [c for c in items if input_state.value.lower() in c.main.plain.lower()]
+        ordered = sorted(matches, key=lambda v: v.main.plain.startswith(input_state.value.lower()))
+
+        return ordered

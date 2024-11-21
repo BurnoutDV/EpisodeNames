@@ -37,23 +37,26 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
   - [x] Assigning Templates to Episodes
   - [ ] Creating Projects
 - [ ] Logic functions that keep internal numbering consistent
-- [ ] Styling - different colors than default
+- [ ] Styling - different colors than default _partially solved by textual 0.86?_
 - [ ] Import/Export of data
 - [ ] Use proper tools for i18n and not some thrown together gobbligob
 - [ ] Use proper user folders
 - [ ] add some cli flags for db folders and stuff (user profiles? why though?)
+- [ ] rearrange files by screens and modals
+- [ ] make project tree view more sophisticated
+- [ ] sort projects by episode edited data and category alphabetical
 
 ## Ideas
 
-- [ ] Import of all existing stuff I got on youtube, separate descriptions from rest and make this the one-stop management solution for all my videos
+- [ ] Import of all existing stuff I got on Youtube, separate descriptions from rest and make this the one-stop management solution for all my videos
 - [ ] Find title duplicates
 - [ ] save additonal meta data
 - [ ] make the interface more sleek and faster to use for the haxxor experience
-
+- [ ] hide currently not working keyboard shortcuts
+- 
 ## Know Issues
 
 * Cannot duplicate template yet
-* The tags are copied from the project, not the template as of now
 * Some number inconsistency, sometimes -1 is assigned which is a bad way
 * Per default, a new project has no template assigned, which might go haywire. Currently, dummy data creates a manual template 0 which should sidestep this
 * all the database stuff always happens in the current working directory

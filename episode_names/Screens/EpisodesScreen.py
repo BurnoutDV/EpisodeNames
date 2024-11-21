@@ -28,10 +28,9 @@ from typing import Iterable, Literal
 import pyperclip
 
 from textual import on
-from textual.app import ComposeResult
+from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.demo import Title
 from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
 from textual.widgets.option_list import Option, Separator
 from textual.screen import ModalScreen, Screen
@@ -39,6 +38,7 @@ from textual.screen import ModalScreen, Screen
 from episode_names.Utility.i18n import i18n
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
 from episode_names.Utility.order import new_episode, create_description_text
+from episode_names.Screens.ProjectScreen import CreateEditProject
 
 class EpisodeScreen(Screen):
     BINDINGS = [
@@ -46,7 +46,9 @@ class EpisodeScreen(Screen):
         Binding(key="ctrl+e", action="edit_entry", description=i18n['Edit Entry']),
         Binding(key="ctrl+a", action="assign_template", description=i18n['Assign Template']),
         Binding(key="ctrl+q", action="copy_text", description=i18n['Copy Text']),
-        Binding(key="ctrl+t", action="copy_tags", description=i18n['Copy Tags'])
+        Binding(key="ctrl+t", action="copy_tags", description=i18n['Copy Tags']),
+        Binding(key="ctrl+k", action="create_project_menu", description=i18n['Create Project']),
+        Binding(key="ctrl+l", action="edit_project_menu", description=i18n['Edit current Project'])
     ]
 
     def __init__(self):
@@ -71,12 +73,45 @@ class EpisodeScreen(Screen):
         #self._dummy_data()
         self.write_log("Mounting Done")
         self.projects.focus()
+        self.write_raw_log(Project.get_categories())
 
     def write_raw_log(self, this, additional_text=""):
         self.app.write_raw_log(this, additional_text)
 
     def write_log(self, text):
         self.app.write_log(text)
+
+    def _action_create_project_menu(self):
+        def handle_callback(new_project: Playlist | None) -> None:
+            if new_project:
+                Project.create_new(new_project)
+                self.redraw_project_tree()
+        self.app.push_screen(CreateEditProject(), handle_callback)
+
+    def _action_edit_project_menu(self) -> None:
+        current = self.projects.cursor_node
+        if not current.data:
+            self.app.notify(i18n['No project currently selected.'], severity="information", timeout=2)
+            return
+        if not current.data['db_uid']:
+            self.app.notify(i18n['Selected project has no ID, this should not be happen.'], severity="error")
+            return
+        p_uid = current.data['db_uid']
+        self._open_edit_project_menu(p_uid)
+
+    def _open_edit_project_menu(self, project_db_id: int) -> None:
+        """Opens the current project menu, exists so the command palette works"""
+        data = Project.as_Playlist_by_uid(project_db_id)
+        if not data:
+            self.write_log(f"DB does not know project with ID {project_db_id}")
+            return False
+        def handle_callback(changed: Playlist) -> None:
+            if not changed:
+                return
+            if changed != data:
+                Project.update_or_create(changed)
+                self.redraw_project_tree()
+        self.app.push_screen(CreateEditProject(data), handle_callback) # callback here
 
     @on(Tree.NodeSelected, "#project_tree")
     def _select_project(self, message: Tree.NodeSelected):
@@ -236,29 +271,46 @@ class EpisodeScreen(Screen):
             new_row = self.entryview.get_row_index(was_selected)
             self.entryview.move_cursor(row=new_row)
 
-    def _init_data(self):
-        """Retrieves data from database in bulk for first build of the view"""
+    def redraw_project_tree(self) -> int:
+        """
+        Wastefully loads the entire tree from the database again to make sure its all there again
+        if something has changed
+        :return: the id of the first entry
+        """
+        self.projects.reset("") # root empty
         self.projects.root.expand()
         current = self.projects.root.add("Current", expand=True)
 
         first_entry = -1
         other_categories = []
-        #data_pro = get_all_projects()
+        # data_pro = get_all_projects()
         data_pro = Project.dump()
         for each in data_pro:
             if first_entry == -1:
                 first_entry = each.db_uid
             if each.category == "default":
-                current.add_leaf(each.title, data={'db_uid': each.db_uid})
+                temp = current.add_leaf(each.title, data={'db_uid': each.db_uid})
             else:
                 if not each.category in other_categories:
                     other_categories.append(each.category)
+            if self.current_project and each.db_uid == self.current_project:
+                node = temp
         for cat in other_categories:
             current = self.projects.root.add(cat)
             for each in data_pro:
                 if each.category != cat:
                     continue
-                current.add_leaf(each.title, data={'db_uid': each.db_uid})
+                temp = current.add_leaf(each.title, data={'db_uid': each.db_uid})
+                if self.current_project and each.db_uid == self.current_project:
+                    node = temp
+        # set node to specific entry
+        #node = self.projects.get_node_by_id()
+        self.projects.select_node(temp)
+        return first_entry
+
+    def _init_data(self):
+        """Retrieves data from database in bulk for first build of the view"""
+        first_entry = self.redraw_project_tree()
         self._refill_table_with_project(first_entry)
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):

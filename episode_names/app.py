@@ -31,10 +31,10 @@ from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Screens.EpisodesScreen import EpisodeScreen
-from episode_names.Screens.ProjectScreen import CreateEditProject
 from episode_names.Screens.TemplateScreen import TemplateScreen
-from episode_names.Utility.i18n import i18n
+from episode_names.Utility.command_palette import MenuProvider
 
+from episode_names.Utility.i18n import i18n
 from episode_names.Utility.db import init_db
 
 __author__ = "Bruno DeVries"
@@ -65,10 +65,12 @@ class DebugLog(ModalScreen[bool]):
 
 class EpisodeNames(App):
     CSS_PATH = 'app_design.tcss'
+    COMMANDS = {MenuProvider}
+    COMMAND_PALETTE_BINDING = "circumflex_accent"
 
     BINDINGS = [
-        Binding(key="ctrl+c", action="quit", description=i18n['Quit']),
-        Binding(key="f3", action="open_debug", description="Debug"),
+        Binding(key="ctrl+c", action="quit", description=i18n['Quit'], show=False),
+        Binding(key="f3", action="open_debug", description="Debug", show=False),
         Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode']),
         Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates']),
     ]
@@ -87,12 +89,13 @@ class EpisodeNames(App):
         super().__init__()
 
     def on_mount(self) -> None:
+        self.theme = "flexoki"
         self.app.switch_mode("episodes")
 
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
         yield from super().get_system_commands(screen)
-        yield SystemCommand("Create Project", "Opens the menu for creating new project", self._create_project_menu)
-        yield SystemCommand("Edit Project", "Opens the menu for editing the currently selected project", self.bell)
+        # hide default commands
+        pass
 
     def write_raw_log(self, this: RenderableType, additional_text=""):
         self.write_log(f"Raw Object: {additional_text}")
@@ -101,9 +104,6 @@ class EpisodeNames(App):
     def write_log(self, text):
         delta_time = round(time.time_ns()/1000000 - self.hour_zero,2)
         self.dummy_log.write(f"{delta_time} - {text}")
-
-    def _create_project_menu(self):
-        self.app.push_screen(CreateEditProject())
 
     def _action_show_templates(self):
         self.app.switch_mode('templates')

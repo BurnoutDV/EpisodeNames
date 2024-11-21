@@ -1,3 +1,49 @@
+* {
+  scrollbar-color: $surface-lighten-1 60%;
+  scrollbar-color-hover: $primary 80%;
+  scrollbar-color-active: $primary;
+  scrollbar-background: $surface-darken-1;
+  scrollbar-background-hover: $surface-darken-1;
+  scrollbar-background-active: $surface-darken-1;
+  scrollbar-size-vertical: 1;
+
+  &:focus {
+    scrollbar-color: $primary 55%;
+  }
+}
+
+AutoComplete {
+
+  /*Input {
+      border-left: wide $accent;
+      background: $surface;
+  }*/
+
+  & AutoCompleteList {
+    color: $text-muted;
+    background: transparent;
+  }
+
+  & .autocomplete--highlight-match {
+    color: $text-accent;
+    background: $accent-muted;
+  }
+}
+
+DataTable {
+    &:focus {
+      padding: 0;
+      border-left: inner $accent;
+  }
+}
+
+Tree {
+    &:focus {
+      padding: 0;
+      border-left: inner $accent;
+  }
+}
+
 .compact_input {
     width: 50%;
 }
@@ -5,6 +51,67 @@
 CreateEditEpisode, CreateEditProject {
     align: center middle;
     background: rgba(40, 40, 40, 0.5);
+}
+
+CreateEditProject {
+
+    Input {
+        border: none;
+        height: 1;
+        background: $background-lighten-2;
+        &:focus {
+          border-left: inner $accent;
+          background: $background-lighten-3;
+      }
+    }
+
+    AutoComplete {
+        height: 1;
+        background: $background-lighten-2;
+        &:focus {
+          border-left: inner $accent;
+          background: $background-lighten-3;
+      }
+      Input {
+        background: $background-lighten-2;
+      }
+    }
+
+    Button {
+        border: vkey $accent;
+        height: 3;
+        padding: 0 1;
+        text-style: bold;
+    }
+
+    TextArea {
+        height: 12;
+        border: none;
+        padding: 0 0;
+        background: $background-lighten-1;
+        &:focus {
+          border-left: outer $accent;
+          background: $background-lighten-3;
+      }
+    }
+
+    .center_vert {
+        height: 26
+    }
+}
+
+Button#save {
+    background: $success 30%;
+    &:hover {
+        background: $success 50%;
+    }
+}
+
+Button#abort {
+    background: $error 30%;
+    &:hover {
+        background: $error 50%;
+    }
 }
 
 .center_vert {

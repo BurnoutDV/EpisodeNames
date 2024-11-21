@@ -1,3 +1,4 @@
 pyperclip~=1.9.0
-textual~=0.83.0
+textual~=0.86.1
 peewee~=3.17.6
+textual-autocomplete~=2.1.0b0

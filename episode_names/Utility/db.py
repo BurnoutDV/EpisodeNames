@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-
+from operator import truediv
 # Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
@@ -79,7 +79,6 @@ class Playlist:
     title: str
     category: str = ""
     description: str = ""
-    tags: str = ""
     db_uid: int = -1
 
     @staticmethod
@@ -88,9 +87,22 @@ class Playlist:
             title=this.name,
             category=this.category,
             description=this.description,
-            tags=this.tags,
             db_uid=this.id
         )
+
+    def __eq__(self, other: 'Playlist') -> bool:
+        """
+        Actually compares only the non-database parts against each other
+        :param other:
+        :return:
+        """
+        if not isinstance(other, Playlist):
+            return NotImplemented
+        if (self.title == other.title
+                and self.description == other.description
+                and self.category == other.category):
+            return True
+        return False
 
 @dataclass
 class PatternTemplate:
@@ -116,7 +128,6 @@ class Project(BaseModel):
     name = CharField()
     category = CharField()
     description = TextField()
-    tags = TextField()
 
     edit_date = DateTimeField(default=datetime.now)
     create_date = DateTimeField(default=datetime.now)
@@ -140,6 +151,14 @@ class Project(BaseModel):
         return flood
 
     @staticmethod
+    def get_categories() -> list[str]:
+        res = Project.select(Project.category).distinct(True)
+        flood = []
+        for each in res:
+            flood.append(str(each.category))
+        return flood
+
+    @staticmethod
     def update_or_create(this: Playlist) -> int:
         if this.db_uid <= 0:
             return Project.create_new(this)
@@ -147,8 +166,7 @@ class Project(BaseModel):
                 name=this.title,
                 category=this.category,
                 description=this.description,
-                tags=this.tags,
-                edit_date=datetime.now
+                edit_date=datetime.now()
                 )
                .where(Project.id == this.db_uid)
                .execute())
@@ -161,7 +179,6 @@ class Project(BaseModel):
                 name=this.title,
                  category=this.category,
                 description=this.description,
-                tags=this.tags
                 )
                .execute())
         return res

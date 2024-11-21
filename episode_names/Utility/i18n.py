@@ -23,13 +23,13 @@
 """Temporarily language things
 
 Should probably replace this with gettext or something"""
-import logging
+import logging, re
 
 logging.basicConfig(
     format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename="../../i18n.log")
+    filename="i18n.log")
 
 class LanguageArchive(dict):
     def __getitem__(self, item):
@@ -38,22 +38,63 @@ class LanguageArchive(dict):
             return f"F:{item}"
         return super().get(item)
 
+    def t(self, item:str, replace_list: dict[str: str] | None = None) -> str:
+        if not item in self:
+            logging.warning(f"Unknown token '{item}'")
+            return f"F:{item}"
+        if not replace_list:
+            return super().get(item)
+
+        def multisub(subs, subject):
+            "Simultaneously perform all substitutions on the subject string."
+            # https://stackoverflow.com/a/765835
+            pattern = '|'.join('(%s)' % re.escape(p) for p, s in subs)
+            substs = [s for p, s in subs]
+            replace = lambda m: substs[m.lastindex - 1]
+            return re.sub(pattern, replace, subject)
+        return multisub([(str(x), str(y)) for x,y in replace_list.items()], super().get(item))
 
 i18n = LanguageArchive({
     'Save': "Save",
     'Cancel': "Cancel",
+    'Yes': "Yes",
+    'No': "No",
     'Quit': "Quit",
-    'New Entry': "New Entry",
-    'Edit Entry': "Edit Entry",
+    'Tags': "Tags",
+    'Category': "Category",
+    'Create New': "Create New",
+    'Toogle Help': "Toogle Help",
+    'New Entry': "Entry:N",
+    'Create Episode': "Create Episode",
+    'episode: Create Episode': "episode: Create Episode",
+    'Create Episode helper': "Opens a menu to create a new episode for the current project (%%P%%).\nCopies everything from previous episode except the title, iterates counter by one.",
+    'Create Episode helper blank': "Opens the creation menu for the first blank episode of project %%P%%",
+    'Edit Entry': "Entry:E",
+    'Edit Episode': "episode: Edit Episode '%%E%%'",
+    'Edit Episode Helper': "Opens a menu to edit episode '%%E%%' of project %%P%%",
+    'Create Project': "Project:C",
+    'Edit Project': "project: Edit Project '%%P%%'",
+    'Edit Project Helper': "Opens a menu to edit project '%%P%%' (ID: %%DB%%)",
+    'Edit current Project': "Project:E",
+    'Create a new Project': "Create a new Project",
+    'project: Create a new Project': "project: Create a new Project",
+    'Opens a menu to create an entire new project from scratch': "Opens a menu to create an entire new project from scratch",
+    'Editing an existing Project': "Editing an existing Project",
+    'No project currently selected.': "No project currently selected.",
+    'Selected project has no ID, this should not be happen.':
+        "Selected project has no ID, this should not be happen.",
     'Session': "Session",
     'Record Date': "Record Date",
     'Title': "Title",
     'Template': "Template",
     'Name': "Name",
     'Date': "Date",
-    'Copy Text': "Copy Text",
+    'Copy Text': "Copy:Tx",
+    'Copy Tags': "Copy:Ta",
     'Templates': "Templates",
     'Template Edit': "Template Edit",
+    'Assign Template': "Template:A",
+    'Tags copied to clipboard': "Tags copied to clipboard",
     'Episode': "Episode",
     'Enter Filter here': "Enter Filter here",
     'Duplicate Current': "Duplicate Current",
@@ -62,7 +103,15 @@ i18n = LanguageArchive({
     'Discard Current': "Discard Current",
     'Switch to Mainscreen': "Switch to Mainscreen",
     'No Template assigned': "No Template assigned/found",
-    'Description copied to clipboard': "Description copied to clipboard"
+    'Description copied to clipboard': "Description copied to clipboard",
+    'theme: Change theme': "theme: Change theme",
+    'Change the current theme': "Change the current theme",
+    'help: Hide keybindings sidebar': "help: Hide keybindings sidebar",
+    'Hide the keybindings sidebar': "Hide the keybindings sidebar",
+    'help: Show keybindings sidebar': "help: Show keybindings sidebar",
+    'Display keybindings for the focused widget in a sidebar': "Display keybindings for the focused widget in a sidebar",
+    'app: Quit episode_names': "app: Quit episode_names",
+    'Quit episode_names and return to the command line': 'Quit episode_names and return to the command line'
 }) # Cheap Trick to make sure there is always something
 
 # i18n['']
