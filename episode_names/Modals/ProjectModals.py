@@ -20,26 +20,19 @@
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
-from datetime import datetime, date
-import time
 import copy
-from select import select
-from typing import Iterable, Literal
-
-import pyperclip
 
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
+from textual.widgets import Input, Button, Label, TextArea
+from textual.screen import ModalScreen
 from textual_autocomplete import AutoComplete, Dropdown, DropdownItem, InputState
-from textual.screen import ModalScreen, Screen
 
-from episode_names.Utility.i18n import i18n
-from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
-from episode_names.Screens.dialogue import YesNoBox
-from episode_names.Utility.order import new_episode, create_description_text
+from episode_names.Utility import i18n
+from episode_names.Utility.db import Project, Playlist
+from episode_names.Modals.DialogueModals import YesNoBox
 
 
 class CreateEditProject(ModalScreen[Playlist or None]):

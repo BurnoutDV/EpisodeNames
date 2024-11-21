@@ -16,4 +16,6 @@ __version__ = '0.0.5'
 * autocomplete field for projects names -> external dependency
 * added dynamic palette commands because i can
 * some restyling which is mighty inconsistent now with the rest of the interface
+## 0.0.6
+* changed project structure a bit to be _more_ proper python?
 """

@@ -30,11 +30,9 @@ from textual.containers import Vertical
 from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
-from episode_names.Screens.EpisodesScreen import EpisodeScreen
-from episode_names.Screens.TemplateScreen import TemplateScreen
-from episode_names.Utility.command_palette import MenuProvider
+from episode_names.Screens import EpisodeScreen, TemplateScreen
+from episode_names.Utility import MenuProvider, i18n
 
-from episode_names.Utility.i18n import i18n
 from episode_names.Utility.db import init_db
 
 __author__ = "Bruno DeVries"

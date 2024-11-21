@@ -32,9 +32,7 @@ from typing import TYPE_CHECKING, cast
 from textual.command import Hit, Hits, Provider, DiscoveryHit
 from textual.types import IgnoreReturnCallbackType
 
-
-from episode_names.Utility.db_operations import create_project
-from episode_names.Utility.i18n import i18n
+from episode_names.Utility import i18n
 
 if TYPE_CHECKING:
     from episode_names.app import EpisodeNames

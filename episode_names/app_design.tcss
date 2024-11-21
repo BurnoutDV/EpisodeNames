@@ -33,14 +33,14 @@ AutoComplete {
 DataTable {
     &:focus {
       padding: 0;
-      border-left: inner $accent;
+      border-left: outer $accent;
   }
 }
 
 Tree {
     &:focus {
       padding: 0;
-      border-left: inner $accent;
+      border-left: outer $accent;
   }
 }
 

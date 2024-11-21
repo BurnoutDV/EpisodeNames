@@ -2,10 +2,10 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, RichLog, Select, TextArea, Collapsible
-from textual.screen import ModalScreen, Screen
+from textual.widgets import Button, Label
+from textual.screen import ModalScreen
 
-from episode_names.Utility.i18n import i18n
+from episode_names.Utility import i18n
 
 
 class YesNoBox(ModalScreen[bool | None]):

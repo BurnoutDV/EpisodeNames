@@ -20,20 +20,16 @@
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
-from datetime import datetime, date
-import time
-from typing import Iterable
-
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.widgets import ListView, ListItem, Footer, Input, Button, Tree, Label, RichLog, Select, TextArea, Collapsible, Static
-from textual.screen import ModalScreen, Screen
+from textual.widgets import ListView, ListItem, Footer, Input, Tree, Label, TextArea, Collapsible
+from textual.screen import Screen
 
-from episode_names.Screens.dialogue import YesNoBox
-from episode_names.Utility.i18n import i18n
-from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
+from episode_names.Modals.DialogueModals import YesNoBox
+from episode_names.Utility import i18n
+from episode_names.Utility.db import TextTemplate, PatternTemplate
 
 class TemplateScreen(Screen):
     BINDINGS = [
@@ -179,6 +175,7 @@ class TemplateScreen(Screen):
     # TODO: on change self.tags update title of template thingy to show number of characters
 
     def update_pattern_list(self, title_filter=""):
+        # Todo: you use this to learn about reactive attributes
         patterns = TextTemplate.dump()
         self.templates.clear()
         self.templates.root.expand()
