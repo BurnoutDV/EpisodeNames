@@ -21,8 +21,12 @@
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
 import copy
+import os
 import re
+import json
 
+from pathlib import Path
+from platformdirs import user_data_dir
 from datetime import date
 from episode_names.Utility.db import init_db, Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
 
@@ -52,7 +56,6 @@ def new_episode(previous: Folge,
     if new_description:
         current.description = new_description
     return current
-
 
 
 def debug_create_template():
@@ -136,8 +139,51 @@ def create_description_text(this: Folge) -> str or None:
         ("$$title$$", this.title)
         ], text.pattern)
 
+def user_setup(name, author, version) -> None:
+    """
+    Handles all the annoying details of config files in the user folder
+
+    :param name: see platformdirs.user_data_dir, this uses that
+    :param author: _see platformdirs.user_data_dir, this uses that_
+    :param version: _see platformdirs.user_data_dir, this uses that_
+    :return: Nothing, but it initiates the database
+    """
+    user_dir = user_data_dir(name, author, version=version)
+    if not Path(user_dir).is_dir():
+        Path(user_dir).mkdir(parents=True, exist_ok=True)
+    os.chdir(user_dir)
+    # originally I wanted to be fancy and use toml or yaml, but json is sufficient
+    default_config = Path(user_dir) / "config.json"
+    if not default_config.is_file():
+        try:
+            with open(default_config, "w") as config_file:
+                default_conf_dict = {
+                    'db_path': 'episode_names.db',
+                    'relative_user_folder': True,
+                    'absolute_db_path': ""
+                }
+                json.dump(default_conf_dict, config_file, indent=2)
+                config = default_conf_dict
+        except (FileNotFoundError, PermissionError, OSError):
+            print("Cannot get write in homefolder, this is rather bad. Aborting")
+            exit(1)  # General Error
+    else:
+        try:
+            with open(default_config, "r") as config_file:
+                config = json.load(config_file)
+        except (FileNotFoundError, PermissionError, OSError):
+            print("Cannot get read on homefolder, this is pretty bad. Aborting")
+            exit(1) # Major Error
+    if config['relative_user_folder']: # default loading .local folder
+        db_path = Path(user_dir) / config['db_path']
+    else:
+        db_path = Path(config['absolute_db_path'])
+    if db_path.is_file():
+        init_db(db_path)
+    else: # create new db file and drop dummy data into it
+        init_db(db_path)
+        create_dummy_data()
 
 if __name__ == "__main__":
     init_db()
     create_dummy_data()
-    #print(get_project_episodes(1))

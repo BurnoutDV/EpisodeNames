@@ -31,12 +31,13 @@ from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Screens import EpisodeScreen, TemplateScreen
-from episode_names.Utility import MenuProvider, i18n
-
-from episode_names.Utility.db import init_db
+from episode_names.Utility import MenuProvider, i18n, user_setup
 
 __author__ = "Bruno DeVries"
 __license__ = "GPL-3"
+__appname__ = "episode_names"
+__appauthor__ = "BurnoutDV" # my preferred name so to speak
+__folder_version__ = "1.0" # in case of breaking changes, change this
 
 
 class DebugLog(ModalScreen[bool]):
@@ -118,6 +119,6 @@ class EpisodeNames(App):
 
 
 if __name__ == "__main__":
-    init_db() # TODO: put this into the homefolder
+    user_setup(__appname__, __appauthor__, __folder_version__)
     app = EpisodeNames()
     app.run()
