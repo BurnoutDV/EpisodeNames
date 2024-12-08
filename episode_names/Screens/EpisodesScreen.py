@@ -76,7 +76,6 @@ class EpisodeScreen(Screen):
         #self._dummy_data()
         self.write_log("Mounting Done")
         self.projects.focus()
-        self.write_raw_log(Project.get_categories())
 
     def write_raw_log(self, this, additional_text=""):
         self.app.write_raw_log(this, additional_text)
@@ -308,26 +307,16 @@ class EpisodeScreen(Screen):
         if not project_id and not fuzzy_name:
             return False
         if project_id:
-            i = 0
-            while True:
-                try:
-                    node = self.projects.get_node_by_id(i)
-                    if node.data and 'db_uid' in node.data and node.data['db_uid'] == project_id:
-                        self.app.write_raw_log(node, "Found Node")
-                        # wont work, this is not the same node for some reason?
-                        #self.projects.move_cursor(node)
-                        # will work, but my root root is not displayed, so -1
-                        self.projects.move_cursor_to_line(i-1)
-                        return True
-                except UnknownNodeID:
-                    return False
-                i+= 1
+            for i, treeline in enumerate(self.projects._tree_lines, 1):
+                node = treeline.node
+                if node.data and 'db_uid' in node.data and node.data['db_uid'] == project_id:
+                    self.projects.move_cursor_to_line(i-1)
+                    return True
+            return False # if none was found
 
     def _init_data(self):
         """Retrieves data from database in bulk for first build of the view"""
         self.redraw_project_tree()
         last_edited = Project.get_last_edited()
         state = self._select_project_tree_entry(last_edited)
-        self.app.write_log(f"State {state}, last: {last_edited}")
         self._refill_table_with_project(last_edited)
-
