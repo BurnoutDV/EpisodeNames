@@ -182,7 +182,7 @@ class TemplateScreen(Screen):
         if not patterns: # empty list
             self.templates.root.add_leaf(i18n['No Elements present'])
             return
-        self.app.write_raw_log(patterns)
+        #self.app.write_raw_log(patterns)
         for each in patterns:
             line = f"{each.title} [#{each.db_uid}-{len(each.pattern)}]"
             self.templates.root.add_leaf(line, data={'db_uid': each.db_uid})

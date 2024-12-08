@@ -33,7 +33,7 @@ from peewee import (
     Model,
     SqliteDatabase,
     TextField,
-    CharField, JOIN,
+    CharField, JOIN, fn,
 )
 
 database_proxy = DatabaseProxy()
@@ -41,15 +41,18 @@ database_proxy = DatabaseProxy()
 @dataclass
 class Folge:
     title: str
-    db_uid: int = -1 # objects can exists without db connection
-    db_project: int = 0
-    db_template: int = 0
     joined_template_title: str | None = None  # this feels not right
     counter1: int = 1
     counter2: int = 0
     session: str = ""
     description: str = ""
     recording_date: date = date.today()
+
+    db_uid: int = -1  # objects can exists without db connection
+    db_project: int = 0
+    db_template: int = 0
+    edit_date: datetime | None = None
+    create_date: datetime | None = None
 
     def __str__(self):
         if self.counter2 > 0:
@@ -63,15 +66,17 @@ class Folge:
             template_title = this.template.title
         return Folge(
             title=this.title,
-            db_uid=this.id,
-            db_project=this.project_id,
-            db_template=this.template_id,
             joined_template_title=template_title,
             counter1=this.counter1,
             counter2=this.counter2,
             session=this.session,
             description=this.description,
             recording_date=this.record_date,
+            db_uid=this.id,
+            db_project=this.project_id,
+            db_template=this.template_id,
+            edit_date=this.edit_date,
+            create_date=this.create_date
         )
 
 @dataclass
@@ -79,14 +84,21 @@ class Playlist:
     title: str
     category: str = ""
     description: str = ""
+
     db_uid: int = -1
+    opt_newest_episode: datetime | None = None # additional data for tree view
 
     @staticmethod
     def from_project(this: 'Project') -> 'Playlist':
+        if hasattr(this, 'opt_newest_episode'):
+            newest = this.opt_newest_episode
+        else:
+            newest = None
         return Playlist(
             title=this.name,
             category=this.category,
             description=this.description,
+            opt_newest_episode=newest,
             db_uid=this.id
         )
 
@@ -151,12 +163,49 @@ class Project(BaseModel):
         return flood
 
     @staticmethod
-    def get_categories() -> list[str]:
-        res = Project.select(Project.category).distinct(True)
+    def get_categories(ordered: Literal['ASC', 'DESC'] | None = None) -> list[str]:
+        if not ordered:
+            res = Project.select(Project.category).distinct(True)
+        elif ordered == "DESC":
+            res = (Project
+                   .select(Project.category).distinct(True)
+                   .join(Episode, JOIN.LEFT_OUTER)  # .join(Episode, on=(Episode.project_id == Project.id))
+                   .group_by(Project.category)
+                   .order_by(fn.Max(Episode.edit_date).desc())
+                   )
+        else:  # this seems to not be easier possible
+            res = (Project
+                   .select(Project.category).distinct(True)
+                   .join(Episode, JOIN.LEFT_OUTER)  # .join(Episode, on=(Episode.project_id == Project.id))
+                   .group_by(Project.category)
+                   .order_by(fn.Max(Episode.edit_date).asc())
+                   )
         flood = []
         for each in res:
             flood.append(str(each.category))
         return flood
+
+    @staticmethod
+    def get_last_edited():
+        """
+        Gives the database ID of the project whichs episode was last edited.
+        Its **NOT** the last editet project, this would be much simpler.
+
+        Another contender of the most specific bullshit I can come with up. I justify this
+        functions existence with the fact that all the static class functions are basically
+        just shorthands for queries that could also exist as part of a different utility
+        class file but are instead directly joined into the database connection
+        layer, as long no names are overwritten this should be okay.
+        :return:
+        """
+        res = (Project
+               .select(Project.id).distinct(True)
+               .join(Episode, JOIN.LEFT_OUTER)  # .join(Episode, on=(Episode.project_id == Project.id))
+               .group_by(Project.id) # necessary?
+               .order_by(fn.Max(Episode.edit_date).desc())
+               )
+        for each in res:
+            return int(each.id)
 
     @staticmethod
     def update_or_create(this: Playlist) -> int:
@@ -201,6 +250,39 @@ class Project(BaseModel):
                    .limit(1))
             return bool(res.count())
         except Episode.DoesNotExist:  # this should never happen
+            return None
+
+    @staticmethod
+    def get_tree_as_playlist() -> list[Playlist] | None:
+        """
+        Returns the same as dump() BUT ordered by the edit_date of the entries, starting
+        with the newest edit.
+
+        So, this does work, but I am still not entirely happy with it.
+
+        SELECT project.*, MAX(episode.edit_date) AS opt_newest_episode
+        FROM project LEFT JOIN episode
+        ON project.id = episode.project_id
+        GROUP BY project.id, episode.project_id
+        ORDER BY MAX(episode.edit_date) DESC
+        :return: list[Playlist]
+        """
+        try:
+            res = (Project
+                   .select(Project.id,
+                     Project.name,
+                     Project.description,
+                     Project.category,
+                     fn.Max(Episode.edit_date).alias("opt_newest_episode"))
+                   .join(Episode, JOIN.LEFT_OUTER) #.join(Episode, on=(Episode.project_id == Project.id))
+                   .group_by(Project.id, Episode.project_id)
+                   .order_by(fn.Max(Episode.edit_date).desc())
+                   )
+            flood = []
+            for each in res:
+                flood.append(Playlist.from_project(each))
+            return flood
+        except Project.DoesNotExist:
             return None
 
 class TextTemplate(BaseModel):

@@ -32,7 +32,9 @@ from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
+from textual.widgets._tree import UnknownNodeID
 from textual.widgets.option_list import Option, Separator
+from textual.widgets.tree import TreeNode
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Utility import i18n
@@ -48,11 +50,12 @@ class EpisodeScreen(Screen):
         Binding(key="ctrl+q", action="copy_text", description=i18n['Copy Text']),
         Binding(key="ctrl+t", action="copy_tags", description=i18n['Copy Tags']),
         Binding(key="ctrl+k", action="create_project_menu", description=i18n['Create Project']),
-        Binding(key="ctrl+l", action="edit_project_menu", description=i18n['Edit current Project'])
+        Binding(key="ctrl+l", action="edit_project_menu", description=i18n['Edit current Project']),
     ]
 
     def __init__(self):
         self.current_project = None
+        self.project_tree = [] # All nodes in project tree
         super().__init__()
 
     def compose(self) -> ComposeResult:#
@@ -86,6 +89,7 @@ class EpisodeScreen(Screen):
             if new_project:
                 Project.create_new(new_project)
                 self.redraw_project_tree()
+                self._select_project_tree_entry(self.current_project)
         self.app.push_screen(CreateEditProject(), handle_callback)
 
     def _action_edit_project_menu(self) -> None:
@@ -271,45 +275,59 @@ class EpisodeScreen(Screen):
             new_row = self.entryview.get_row_index(was_selected)
             self.entryview.move_cursor(row=new_row)
 
-    def redraw_project_tree(self) -> int:
+    def redraw_project_tree(self, pre_select: int | None = None):
         """
         Wastefully loads the entire tree from the database again to make sure its all there again
         if something has changed
-        :return: the id of the first entry
+        :param pre_select:
+        :return: a dictionary with all leaflets
         """
-        self.projects.reset("") # root empty
+        self.projects.reset("")
         self.projects.root.expand()
-        current = self.projects.root.add("Current", expand=True)
+        #data = enrich_playlist_list(Project.dump())
+        data = Project.get_tree_as_playlist()
+        tree = {}
+        categories = Project.get_categories(ordered="DESC")
+        for cat in categories:
+            tree[cat] = {}
+            tree[cat]['root'] = self.projects.root.add(cat, expand=True)
+            for entry in data:
+                if entry.category == cat:
+                    leaf = tree[cat]['root'].add_leaf(str(entry.title), data={'db_uid': entry.db_uid, 'playlist': entry})
+                    tree[cat][entry.db_uid] = leaf
+        self.project_tree = tree # TODO: find a way to iterate over nodes of the tree instead
 
-        first_entry = -1
-        other_categories = []
-        # data_pro = get_all_projects()
-        data_pro = Project.dump()
-        for each in data_pro:
-            if first_entry == -1:
-                first_entry = each.db_uid
-            if each.category == "default":
-                temp = current.add_leaf(each.title, data={'db_uid': each.db_uid})
-            else:
-                if not each.category in other_categories:
-                    other_categories.append(each.category)
-            if self.current_project and each.db_uid == self.current_project:
-                node = temp
-        for cat in other_categories:
-            current = self.projects.root.add(cat)
-            for each in data_pro:
-                if each.category != cat:
-                    continue
-                temp = current.add_leaf(each.title, data={'db_uid': each.db_uid})
-                if self.current_project and each.db_uid == self.current_project:
-                    node = temp
-        # set node to specific entry
-        #node = self.projects.get_node_by_id()
-        self.projects.select_node(temp)
-        return first_entry
+    def _select_project_tree_entry(self, project_id: int | None = None, fuzzy_name: str | None = None) -> bool:
+        """
+        Uses the self.project_tree class variable to find the TreeNode that matches the given name
+        or data_id
+        :param int|None project_id: ID of the project that is in the project node
+        :param str|None fuzzy_name: name of the node, will select the first match
+        :return: bool, if something was selected or not
+        """
+        if not project_id and not fuzzy_name:
+            return False
+        if project_id:
+            i = 0
+            while True:
+                try:
+                    node = self.projects.get_node_by_id(i)
+                    if node.data and 'db_uid' in node.data and node.data['db_uid'] == project_id:
+                        self.app.write_raw_log(node, "Found Node")
+                        # wont work, this is not the same node for some reason?
+                        #self.projects.move_cursor(node)
+                        # will work, but my root root is not displayed, so -1
+                        self.projects.move_cursor_to_line(i-1)
+                        return True
+                except UnknownNodeID:
+                    return False
+                i+= 1
 
     def _init_data(self):
         """Retrieves data from database in bulk for first build of the view"""
-        first_entry = self.redraw_project_tree()
-        self._refill_table_with_project(first_entry)
+        self.redraw_project_tree()
+        last_edited = Project.get_last_edited()
+        state = self._select_project_tree_entry(last_edited)
+        self.app.write_log(f"State {state}, last: {last_edited}")
+        self._refill_table_with_project(last_edited)
 
