@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # coding: utf-8
-
 # Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
@@ -20,9 +19,6 @@
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
-from datetime import datetime, date
-import time
-from select import select
 from typing import Iterable, Literal
 
 import pyperclip
@@ -31,11 +27,8 @@ from textual import on
 from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
-from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
-from textual.widgets._tree import UnknownNodeID
-from textual.widgets.option_list import Option, Separator
-from textual.widgets.tree import TreeNode
-from textual.screen import ModalScreen, Screen
+from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, MarkdownViewer, TextArea
+from textual.screen import Screen
 
 from episode_names.Utility import i18n
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
@@ -64,7 +57,13 @@ class EpisodeScreen(Screen):
         with Vertical():
             with Horizontal():
                 yield self.projects
-                yield self.entryview
+                with TabbedContent(id="tabs"):
+                    with TabPane(i18n['Episodes'], id='tab_episode'):
+                        yield self.entryview
+                    with TabPane(i18n['Project Notes']):
+                        yield TextArea(id='test_note')
+                    with TabPane(i18n['All Notes']):
+                        yield MarkdownViewer(id="test_md")
             yield Footer()
 
     def on_mount(self) -> None:
@@ -76,6 +75,14 @@ class EpisodeScreen(Screen):
         #self._dummy_data()
         self.write_log("Mounting Done")
         self.projects.focus()
+        # tests:
+        md = self.query_one('#test_md')
+        if md:
+            import os
+            import sys
+            test_path = os.path.dirname(os.path.realpath(__file__))
+            with open(f"{test_path}/../../README.md", "r") as help:
+                md.document.update(help.read())
 
     def write_raw_log(self, this, additional_text=""):
         self.app.write_raw_log(this, additional_text)

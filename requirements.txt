@@ -2,6 +2,5 @@ pyperclip~=1.9.0
 textual~=0.89.1
 peewee~=3.17.6
 textual-autocomplete~=2.1.0b0
-episode_names>=0.0.3
 platformdirs>=4.3.6
 rich>=13.9.4

@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, cast
 from textual.command import Hit, Hits, Provider, DiscoveryHit
 from textual.types import IgnoreReturnCallbackType
 
-from episode_names.Utility import i18n
+from episode_names.Utility.i18n import i18n
 
 if TYPE_CHECKING:
     from episode_names.app import EpisodeNames
@@ -58,9 +58,9 @@ class MenuProvider(Provider):
                 True,
             )
             commands_to_show.append(create_project)
-            if screen.current_project: # levels down
+            if screen.current_project:  # levels down
                 current_project = Project.as_Playlist_by_uid(screen.current_project)
-            if current_project: # security check for some weirdness that will never happen
+            if current_project:  # security check for some weirdness that will never happen
                 ### edit project
                 edit_project = (
                     i18n.t('Edit Project', {'%%P%%': current_project.title}),
