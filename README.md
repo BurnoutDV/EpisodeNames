@@ -45,18 +45,21 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 - [ ] rearrange files by screens and modals
 - [ ] make project tree view more sophisticated
 - [ ] sort projects by episode edited data and category alphabetical
+- [ ] revamp database scheme, currently everything is NotNull and got no defautls in SQL
+- [ ] Hide/Show Keyboard shortcuts in EpisodeScreen based on currently active modal
 
 ## Ideas
 
 - [ ] Import of all existing stuff I got on Youtube, separate descriptions from rest and make this the one-stop management solution for all my videos
 - [ ] Find title duplicates
-- [ ] save additonal meta data
+- [ ] save additional meta data
 - [ ] make the interface more sleek and faster to use for the haxxor experience
 - [ ] hide currently not working keyboard shortcuts
-- 
+- [ ] I am currently loading all Episodes from the database multiple times to populate views. This should always be fast even if I had thousands of entries..yet, maybe I should still cache those and only update deltas when needed? It would be way more complicated, but, as an exercise, better
+
 ## Know Issues
 
 * Cannot duplicate template yet
+* For some reasons I broke the scrollability of my main Datatable that contains the episodes, I added a ScrollView but this should not be necessary
 * Some number inconsistency, sometimes -1 is assigned which is a bad way
 * Per default, a new project has no template assigned, which might go haywire. Currently, dummy data creates a manual template 0 which should sidestep this
-* all the database stuff always happens in the current working directory

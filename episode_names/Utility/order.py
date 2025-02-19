@@ -116,6 +116,13 @@ Aufnahme vom $$record_date$$ - #$$counter1$$ - ##$$counter2$$"""
     print("Done with my dastardly task master")
 
 def create_description_text(this: Folge) -> str or None:
+    """
+
+    TODO: make this more efficient.
+
+    :param this:
+    :return:
+    """
     def multisub(subs, subject):
         "Simultaneously perform all substitutions on the subject string."
         # https://stackoverflow.com/a/765835

@@ -33,7 +33,7 @@ from peewee import (
     Model,
     SqliteDatabase,
     TextField,
-    CharField, JOIN, fn,
+    CharField, JOIN, fn, SQL
 )
 
 database_proxy = DatabaseProxy()
@@ -46,6 +46,7 @@ class Folge:
     counter2: int = 0
     session: str = ""
     description: str = ""
+    notes: str | None = None
     recording_date: date = date.today()
 
     db_uid: int = -1  # objects can exists without db connection
@@ -64,6 +65,8 @@ class Folge:
         template_title = None
         if int(this.template_id) > 0 and hasattr(this.template, "title"):
             template_title = this.template.title
+        if not this.notes: # empty note becomes Null
+            this.notes = None
         return Folge(
             title=this.title,
             joined_template_title=template_title,
@@ -71,6 +74,7 @@ class Folge:
             counter2=this.counter2,
             session=this.session,
             description=this.description,
+            notes=this.notes,
             recording_date=this.record_date,
             db_uid=this.id,
             db_project=this.project_id,
@@ -355,11 +359,12 @@ class TextTemplate(BaseModel):
 
 class Episode(BaseModel):
     title = CharField()
-    counter1 = IntegerField()
-    counter2 = IntegerField()
+    counter1 = IntegerField(null=False)
+    counter2 = IntegerField(default=0, null=False, constraints=[SQL('DEFAULT 0')])
     record_date = DateField()
     session = CharField()
     description = TextField()
+    notes = TextField(null=True)
 
     template = ForeignKeyField(TextTemplate, lazy_load=True)
     project = ForeignKeyField(Project, lazy_load=True)
@@ -413,6 +418,8 @@ class Episode(BaseModel):
         """
         if this.db_uid <= 0:
             return Episode.create_new(this)
+        if not this.notes: # any none type becomes Null
+            this.notes = None
         res = (Episode
                .update(
                 title=this.title,
@@ -421,6 +428,7 @@ class Episode(BaseModel):
                 record_date=this.recording_date,
                 session=this.session,
                 description=this.description,
+                notes=this.notes,
                 template_id=this.db_template,
                 project_id=this.db_project,
                 edit_date=datetime.now()
@@ -431,6 +439,8 @@ class Episode(BaseModel):
 
     @staticmethod
     def create_new(this: Folge) -> int:
+        if not this.notes:
+            this.notes = None
         res = (Episode.insert(
             title=this.title,
             counter1=this.counter1,
@@ -438,6 +448,7 @@ class Episode(BaseModel):
             record_date=this.recording_date,
             session=this.session,
             description=this.description,
+            notes=this.notes,
             template_id=this.db_template,
             project_id=this.db_project
         ).execute())

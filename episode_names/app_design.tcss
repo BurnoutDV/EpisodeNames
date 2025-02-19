@@ -32,7 +32,6 @@ AutoComplete {
 
 DataTable {
     border-left: outer $panel;
-
     &:focus {
       padding: 0;
       border-left: outer $accent;
@@ -103,14 +102,20 @@ CreateEditProject {
     }
 }
 
-Button#save {
+Button#save,
+Button#btn_yes,
+Button#btn_save
+{
     background: $success 30%;
     &:hover {
         background: $success 50%;
     }
 }
 
-Button#abort {
+Button#abort
+Button#btn_no,
+Button#btn_abort
+{
     background: $error 30%;
     &:hover {
         background: $error 50%;
@@ -164,6 +169,20 @@ YesNoBox Vertical {
 
 YesNoBox Label {
     align: center middle;
+}
+
+WriteNoteModal {
+    align: center middle;
+    background: rgba(0, 0, 96, 0.4);
+}
+
+WriteNoteModal #wrapper {
+    width: 80%;
+    max-width: 100;
+    max-height: 20;
+    height: 80%;
+    border: thick $accent 100%;
+    background: $surface;
 }
 
 #tags {

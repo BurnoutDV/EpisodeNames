@@ -32,7 +32,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
-from textual.widgets.option_list import Option, Separator
+from textual.widgets.option_list import Option
 from textual.screen import ModalScreen
 
 from episode_names.Utility import i18n
@@ -40,8 +40,8 @@ from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemp
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):
     BINDINGS = [
-        Binding(key="ctrl+s", action="save", description=i18n['Save']),
-        Binding(key="ctrl+c, esc", action="abort", description=i18n['Cancel'], priority=True)
+        Binding(key="ctrl+s, enter", action="save", description=i18n['Save']),
+        Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
 
     def __init__(self, hot_episode: Folge):
@@ -77,7 +77,7 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         self.cache = {}
         self.templates.add_option(Option("", id="-1"))
         # todo add current element here
-        self.templates.add_option(Separator())
+        self.templates.add_option(None)
         for each in list_of_templates:
             self.templates.add_option(Option(each.title, str(each.db_uid)))
             self.cache[str(each.db_uid)] = each  # Option Index are strings
@@ -164,7 +164,7 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
 class CreateEditEpisode(ModalScreen[Folge or None]):
     BINDINGS = [
         Binding(key="ctrl+s", action="save", description=i18n['Save']),
-        Binding(key="ctrl+c, esc", action="abort", description=i18n['Cancel'], priority=True)
+        Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
 
     def __init__(self, copy_from: None or Folge = None, p_uid: int = 0):
@@ -240,3 +240,100 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
     @on(Button.Pressed, "#abort")
     def _btn_abort(self):
         self._action_abort()
+
+class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
+    """
+    A multi purpose modal to write 'notes' or any multi lined text that can be done on the fly
+    while editing any object. Originally I wanted this to write notes to episodes and playlists
+    but then realized that I might aswell create it a bit more open ended so it can be used
+    for something else
+    """
+    BINDINGS = [
+        Binding(key="ctrl+s", action="save", description=i18n['Save']),
+        Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True),
+        Binding(key="ctrl+r", action="reset", description=i18n['Reset'])
+    ]
+
+    def __init__(self, notes: Folge | Playlist | str | None = None):
+        if isinstance(notes, Folge):
+            self.modus = 0
+            self.notes = notes
+        elif isinstance(notes, Playlist):
+            self.modus = 1
+            self.notes = notes
+        else:
+            self.modus = 2
+            self.notes = notes
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="wrapper"):
+            with Vertical():
+                yield Header(id="headline")
+                with Horizontal(classes="max-height"):
+                    yield TextArea(text="", id="note_area")
+                with Horizontal(classes="adjust"):
+                    yield Button(i18n['Save'], id="btn_save")
+                    yield Button(i18n['Cancel'], id="btn_abort")
+            yield Footer()
+
+    def on_mount(self) -> None:
+        note_text = self.query_one("#note_area")
+        if self.modus < 2:
+            if self.notes.notes: # * it might be Null
+                note_text.load_text(self.notes.notes)
+        else:
+            if self.notes: # and is not none
+                note_text.load_text(self.notes)
+        if self.modus == 0: # * Episode / Folge
+            self.title = i18n['Edit/Write note for episode']
+            self.sub_title = f"#{self.notes.counter1} - {self.notes.title}"
+        elif self.modus == 1: # * Playlist / Project
+            self.title = i18n['Project notes']
+            self.sub_title = self.notes.title
+        else:
+            self.title = i18n['Generic Note Window']
+
+    def action_reset(self):
+        """
+        Returns text area to init status
+        :return:
+        """
+        note_text = self.query_one("#note_area")
+        note_text.load_text("") # reset
+        self.on_mount()
+
+    @on(Button.Pressed, "#btn_save")
+    def _action_save(self):
+        note_text = self.query_one("#note_area")
+        if self.modus < 2: # Episode OR Playlist
+            self.notes.notes = note_text.text
+            self.dismiss(self.notes)
+        else:
+            self.dismiss(note_text.text)
+
+    @on(Button.Pressed, "#btn_abort")
+    def _action_abort(self):
+        self.dismiss(None)
+
+
+class GenericCopyModal(ModalScreen[str | None]):
+    BINDINGS = [
+        Binding(key="ctrl+s", action="save", description=i18n['Save']),
+        Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
+    ]
+
+    def __init__(self):
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        pass
+
+    def on_mount(self) -> None:
+        pass
+
+    def _action_save(self):
+        self.dismiss("some text here alan")
+
+    def _action_abort(self):
+        self.dismiss(None)

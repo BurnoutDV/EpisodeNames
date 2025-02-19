@@ -30,6 +30,7 @@ from textual.containers import Vertical
 from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
+from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Screens import EpisodeScreen, TemplateScreen
 from episode_names.Utility import MenuProvider, i18n, user_setup
 
@@ -68,7 +69,7 @@ class EpisodeNames(App):
     COMMAND_PALETTE_BINDING = "circumflex_accent"
 
     BINDINGS = [
-        Binding(key="ctrl+c", action="quit", description=i18n['Quit'], show=False),
+        Binding(key="escape", action="quit_dial", description=i18n['Quit'], show=False),
         Binding(key="f3", action="open_debug", description="Debug", show=False),
         Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode']),
         Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates']),
@@ -116,6 +117,12 @@ class EpisodeNames(App):
 
         self.debug_open = True
         self.app.push_screen(DebugLog(self.dummy_log), handle_debug)
+
+    def action_quit_dial(self):
+        def handle_quit_message(dec: bool):
+            if dec:
+                self.exit(message=i18n["Thanks for choosing EpisodNames"])
+        self.app.push_screen(YesNoBox(i18n["Do you want to quit?"]), handle_quit_message)
 
 
 if __name__ == "__main__":

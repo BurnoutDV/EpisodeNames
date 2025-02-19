@@ -26,24 +26,27 @@ import pyperclip
 from textual import on
 from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
-from textual.containers import Vertical, Horizontal
+from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, MarkdownViewer, TextArea
 from textual.screen import Screen
 
 from episode_names.Utility import i18n
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
 from episode_names.Utility.order import new_episode, create_description_text
-from episode_names.Modals import CreateEditProject, AssignTemplate, CreateEditEpisode
+from episode_names.Modals import CreateEditProject, AssignTemplate, CreateEditEpisode, WriteNoteModal
 
 class EpisodeScreen(Screen):
     BINDINGS = [
-        Binding(key="ctrl+d", action="new_entry", description=i18n['New Entry']),
-        Binding(key="ctrl+e", action="edit_entry", description=i18n['Edit Entry']),
-        Binding(key="ctrl+a", action="assign_template", description=i18n['Assign Template']),
-        Binding(key="ctrl+q", action="copy_text", description=i18n['Copy Text']),
-        Binding(key="ctrl+t", action="copy_tags", description=i18n['Copy Tags']),
-        Binding(key="ctrl+k", action="create_project_menu", description=i18n['Create Project']),
-        Binding(key="ctrl+l", action="edit_project_menu", description=i18n['Edit current Project']),
+        Binding(key="d", action="new_entry", description=i18n['New Entry']),
+        Binding(key="e", action="edit_entry", description=i18n['Edit Entry']),
+        Binding(key="a", action="assign_template", description=i18n['Assign Template']),
+        Binding(key="q", action="copy_text", description=i18n['Copy Text']),
+        Binding(key="t", action="copy_tags", description=i18n['Copy Tags']),
+        Binding(key="k", action="create_project_menu", description=i18n['Create Project']),
+        Binding(key="l", action="edit_project_menu", description=i18n['Edit current Project']),
+        #Binding(key="ctrl+n", action="create_md", description=i18n['Create MD']),
+        Binding(key="n", action="open_episode_note", description=i18n['Episode Note']),
+        Binding(key="ctrl+n", action="open_project_note", description=i18n['Project Note']),
     ]
 
     def __init__(self):
@@ -59,11 +62,12 @@ class EpisodeScreen(Screen):
                 yield self.projects
                 with TabbedContent(id="tabs"):
                     with TabPane(i18n['Episodes'], id='tab_episode'):
-                        yield self.entryview
+                        with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
+                            yield self.entryview
                     with TabPane(i18n['Project Notes']):
-                        yield TextArea(id='test_note')
+                        yield TextArea(id='project_notes')
                     with TabPane(i18n['All Notes']):
-                        yield MarkdownViewer(id="test_md")
+                        yield MarkdownViewer(id="combined_view", show_table_of_contents=False)
             yield Footer()
 
     def on_mount(self) -> None:
@@ -75,14 +79,6 @@ class EpisodeScreen(Screen):
         #self._dummy_data()
         self.write_log("Mounting Done")
         self.projects.focus()
-        # tests:
-        md = self.query_one('#test_md')
-        if md:
-            import os
-            import sys
-            test_path = os.path.dirname(os.path.realpath(__file__))
-            with open(f"{test_path}/../../README.md", "r") as help:
-                md.document.update(help.read())
 
     def write_raw_log(self, this, additional_text=""):
         self.app.write_raw_log(this, additional_text)
@@ -159,6 +155,22 @@ class EpisodeScreen(Screen):
         else:
             self.app.push_screen(CreateEditEpisode(None, self.current_project), handle_new_entry_response)
 
+    def _action_create_md(self):
+        if not self.current_project:
+            return
+        proj = Project.as_Playlist_by_uid(self.current_project)
+        epis = Episode.by_project(self.current_project, 'asc')
+        path_file = f"{proj.title}.md"
+        with open(path_file, "w") as md_file:
+            md_file.write(f"# {proj.title}\n\n")
+            md_file.write(f"> {proj.description}\n")
+            for each in epis:
+                desc = create_description_text(each)
+                md_file.write(f"## {each.title}\n")
+                md_file.write(f"{desc}\n")
+                md_file.write(f"\n`{each.edit_date}`\n")
+        self.app.notify(f"Wrote file: {path_file}")
+
     def _action_edit_entry(self):
         def handle_edit_entry_response(this: Folge or None):
             if not this:
@@ -222,6 +234,24 @@ class EpisodeScreen(Screen):
         if row_key:
             this = Episode.as_Folge_by_uid(row_key.value)
             self.app.push_screen(AssignTemplate(this), template_callback)
+
+    def action_open_episode_note(self):
+        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+        if not row_key:
+            return
+        this = Episode.as_Folge_by_uid(row_key.value)
+        if not this:
+            return
+
+        def note_callback(notice: Folge or None):
+            if not notice:
+                return
+            if not isinstance(notice, Folge): # * hard type check
+                return
+            Episode.update_or_create(notice)
+            self._create_markdown_breakdown() # update overview
+        self.app.push_screen(WriteNoteModal(this), note_callback)
+
 
     def _refill_table_with_project(self,
            p_uid: int,
@@ -303,6 +333,21 @@ class EpisodeScreen(Screen):
                     tree[cat][entry.db_uid] = leaf
         self.project_tree = tree # TODO: find a way to iterate over nodes of the tree instead
 
+    def _create_markdown_breakdown(self) -> bool:
+        # it might be more wise to create a separate database method that only retrieves records that actually do
+        # have content in the notes section
+        all_notes_md = f"# {i18n['Project Notes Summary']}\n"
+        #! do the playlist notes here Alan
+        data_ep = Episode.by_project(self.current_project, order="desc") # maybe it would better to cache this
+        for each in data_ep:
+            if not each.notes:
+                continue
+            all_notes_md += f"### #{each.counter1}{f' (##{each.counter2})' if each.counter2 else ''} - {each.title}\n\n"
+            all_notes_md += each.notes + "\n"
+        note_md = self.query_one("#combined_view")
+        note_md.document.update(all_notes_md)
+
+
     def _select_project_tree_entry(self, project_id: int | None = None, fuzzy_name: str | None = None) -> bool:
         """
         Uses the self.project_tree class variable to find the TreeNode that matches the given name
@@ -327,3 +372,4 @@ class EpisodeScreen(Screen):
         last_edited = Project.get_last_edited()
         state = self._select_project_tree_entry(last_edited)
         self._refill_table_with_project(last_edited)
+        self._create_markdown_breakdown()

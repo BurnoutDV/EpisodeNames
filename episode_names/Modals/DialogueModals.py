@@ -15,7 +15,8 @@ class YesNoBox(ModalScreen[bool | None]):
     find elsewhere as boiler plate
     """
     BINDINGS = [
-        Binding("enter", "accept_true", i18n['Yes'])
+        Binding("enter", "accept_accept_true", i18n['Yes']),
+        Binding("escape", "accept_decline_false", i18n['No'])
     ]
 
     def __init__(self, message: str = ""):
@@ -31,15 +32,15 @@ class YesNoBox(ModalScreen[bool | None]):
                 yield Button(i18n['No'], id="btn_no")
 
     @on(Button.Pressed, "#btn_yes")
-    def _btn_save(self) -> None:
-        self._action_accept_true()
+    def _btn_yes(self) -> None:
+        self.action_accept_true()
 
     @on(Button.Pressed, "#btn_no")
-    def _btn_save(self) -> None:
-        self._action_decline_false()
+    def _btn_no(self) -> None:
+        self.action_decline_false()
 
-    def _action_accept_true(self):
+    def action_accept_true(self):
         self.dismiss(True)
 
-    def _action_decline_false(self):
+    def action_decline_false(self):
         self.dismiss(False)

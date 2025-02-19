@@ -1,2 +1,2 @@
 from episode_names.Modals.ProjectModals import CreateEditProject
-from episode_names.Modals.EpisodeModals import AssignTemplate, CreateEditEpisode
+from episode_names.Modals.EpisodeModals import AssignTemplate, CreateEditEpisode, WriteNoteModal
