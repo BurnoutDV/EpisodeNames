@@ -82,6 +82,7 @@ i18n = LanguageArchive({
     'Create a new Project': "Create a new Project",
     'project: Create a new Project': "project: Create a new Project",
     'Project Note': "Project Note",
+    'Delete Project': "🔥🔥Delete Project🔥🔥", # feeling edgy
     'Opens a menu to create an entire new project from scratch': "Opens a menu to create an entire new project from scratch",
     'Editing an existing Project': "Editing an existing Project",
     'No project currently selected.': "No project currently selected.",

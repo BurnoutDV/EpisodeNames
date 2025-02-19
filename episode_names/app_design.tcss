@@ -52,24 +52,37 @@ Tree {
 
 CreateEditEpisode, CreateEditProject {
     align: center middle;
-    background: rgba(40, 40, 40, 0.5);
+    background: rgba(0, 40, 40, 0.5);
 }
 
 CreateEditProject {
 
+    Vertical {
+        height: 80%;
+        width: 80%;
+    }
+
+    ScrollableContainer {
+        min-height: 20;
+        min-width: 50;
+    }
+
     Input {
         border: none;
+        border-left: outer $accent;
         height: 1;
-        background: $background-lighten-2;
+        max-height: 1;
         &:focus {
-          border-left: inner $accent;
+          border-left: thick $accent-lighten-3;
           background: $background-lighten-3;
       }
     }
 
+    #title { background: $background-lighten-1; }
+    #category { background: $background-lighten-2; }
+
     AutoComplete {
         height: 1;
-        background: $background-lighten-2;
         &:focus {
           border-left: inner $accent;
           background: $background-lighten-3;
@@ -86,19 +99,28 @@ CreateEditProject {
         text-style: bold;
     }
 
-    TextArea {
-        height: 12;
-        border: none;
-        padding: 0 0;
+    Checkbox {
+        border: panel red;
+        height: 4;
+        padding-top: 1;
+        margin: 1;
         background: $background-lighten-1;
-        &:focus {
-          border-left: outer $accent;
-          background: $background-lighten-3;
-      }
+
+        Button {
+            background: red;
+        }
     }
 
-    .center_vert {
-        height: 26
+    TextArea {
+        border: none;
+        border-left: outer $accent;
+        padding: 0 0;
+        min-height: 7;
+        background: $background-lighten-1;
+        &:focus {
+          border-left: thick $accent-lighten-3;
+          background: $background-lighten-3;
+      }
     }
 }
 
@@ -114,7 +136,8 @@ Button#btn_save
 
 Button#abort
 Button#btn_no,
-Button#btn_abort
+Button#btn_abort,
+Button#btn_cancel
 {
     background: $error 30%;
     &:hover {

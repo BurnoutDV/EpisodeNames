@@ -1,4 +1,4 @@
-__version__ = '0.0.5'
+__version__ = '0.0.7'
 
 """
 # Patch Notes
@@ -18,4 +18,8 @@ __version__ = '0.0.5'
 * some restyling which is mighty inconsistent now with the rest of the interface
 ## 0.0.6
 * changed project structure a bit to be _more_ proper python?
+## 0.0.7
+* Project Creation / Edit Menu overhaul
+* Notes on Episodes now work
+* Project Delete
 """

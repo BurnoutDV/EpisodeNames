@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 from operator import truediv
+from pydoc import describe
 # Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
@@ -49,7 +50,7 @@ class Folge:
     notes: str | None = None
     recording_date: date = date.today()
 
-    db_uid: int = -1  # objects can exists without db connection
+    db_uid: int = 0  # objects can exists without db connection
     db_project: int = 0
     db_template: int = 0
     edit_date: datetime | None = None
@@ -89,7 +90,7 @@ class Playlist:
     category: str = ""
     description: str = ""
 
-    db_uid: int = -1
+    db_uid: int = 0
     opt_newest_episode: datetime | None = None # additional data for tree view
 
     @staticmethod
@@ -120,12 +121,21 @@ class Playlist:
             return True
         return False
 
+    def __bool__(self) -> bool:
+        """
+        Returns whether a playlist object is empty or not
+        :return:
+        """
+        if not self.title and not self.category and not self.description:
+            return False
+        return True
+
 @dataclass
 class PatternTemplate:
     title: str
     pattern: str = ""
     tags: str = ""
-    db_uid: int = -1
+    db_uid: int = 0
 
     @staticmethod
     def from_TextTemplate(this: 'TextTemplate') -> 'PatternTemplate':
@@ -288,6 +298,17 @@ class Project(BaseModel):
             return flood
         except Project.DoesNotExist:
             return None
+
+    @staticmethod
+    def is_empty(project_id) -> bool:
+        """
+        Checks if there are any episodes assigned to this project
+
+        :param project_id: DB UID of the project
+        :return: True if any episodes are to be found
+        """
+        res = (Episode.select().where(Episode.project_id == project_id).count())
+        return not bool(res)
 
 class TextTemplate(BaseModel):
     title = CharField()

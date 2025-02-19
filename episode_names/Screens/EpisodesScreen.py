@@ -109,10 +109,16 @@ class EpisodeScreen(Screen):
         """Opens the current project menu, exists so the command palette works"""
         data = Project.as_Playlist_by_uid(project_db_id)
         if not data:
-            self.write_log(f"DB does not know project with ID {project_db_id}")
+            # todo: i18n here
+            self.app.notify(f"DB does not know project with ID {project_db_id}", severity="error")
             return False
-        def handle_callback(changed: Playlist) -> None:
-            if not changed:
+        def handle_callback(changed: Playlist | None | bool) -> None:
+            if isinstance(changed, bool) and changed == False: # delete request
+                if Project.is_empty(project_db_id):
+                    Project.delete_by_id(project_db_id)
+                    self.redraw_project_tree()
+                    return
+            if not changed: # this should already be handled by the modal
                 return
             if changed != data:
                 Project.update_or_create(changed)

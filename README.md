@@ -35,7 +35,7 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 - [ ] Making the entire workflow in interface possible
   - [x] Creating, Editing, Deleting Templates
   - [x] Assigning Templates to Episodes
-  - [ ] Creating Projects
+  - [x] Creating Projects
 - [ ] Logic functions that keep internal numbering consistent
 - [ ] Styling - different colors than default _partially solved by textual 0.86?_
 - [ ] Import/Export of data
@@ -47,6 +47,7 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 - [ ] sort projects by episode edited data and category alphabetical
 - [ ] revamp database scheme, currently everything is NotNull and got no defautls in SQL
 - [ ] Hide/Show Keyboard shortcuts in EpisodeScreen based on currently active modal
+- [ ] Make it so that the db connector does not create objects that are basically empty / work more with SQL restraints
 
 ## Ideas
 
