@@ -55,25 +55,27 @@ class EpisodeScreen(Screen):
         super().__init__()
 
     def compose(self) -> ComposeResult:#
-        self.projects = Tree("Project", id="project_tree", classes="sidebar")
+        self.projects = Tree("Project", id="project_tree")
         self.entryview = DataTable(id="entryview", zebra_stripes=True, cursor_type="row")
-        with Vertical():
-            with Horizontal():
-                yield self.projects
-                with TabbedContent(id="tabs"):
-                    with TabPane(i18n['Episodes'], id='tab_episode'):
-                        with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
-                            yield self.entryview
-                    with TabPane(i18n['Project Notes']):
-                        yield TextArea(id='project_notes')
-                    with TabPane(i18n['All Notes']):
-                        yield MarkdownViewer(id="combined_view", show_table_of_contents=False)
-            yield Footer()
+
+        with Horizontal():
+            yield self.projects
+            with TabbedContent(id="tabs"):
+                with TabPane(i18n['Episodes'], id='tab_episode'):
+                    with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
+                        yield self.entryview
+                with TabPane(i18n['Project Notes']):
+                    yield MarkdownViewer(id='project_notes', show_table_of_contents=False)
+                with TabPane(i18n['All Notes']):
+                    yield MarkdownViewer(id="combined_view", show_table_of_contents=False)
+        yield Footer()
 
     def on_mount(self) -> None:
         self.write_log("Starting EpisodeNames")
         self.projects.show_root = False
         self.projects.show_guides = False
+        self.projects.border_title = i18n['Projects']
+        self.entryview.border_title = i18n['Episodes']
         self.write_log("Init Data Tables and Views...")
         self._init_data()
         #self._dummy_data()

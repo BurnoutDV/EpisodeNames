@@ -30,24 +30,59 @@ AutoComplete {
   }
 }
 
-DataTable {
-    border-left: outer $panel;
-    &:focus {
-      padding: 0;
-      border-left: outer $accent;
-  }
-}
-
-Tree {
-    border-left: outer $panel;
-    &:focus {
-      padding: 0;
-      border-left: outer $accent;
-  }
-}
-
 .compact_input {
     width: 50%;
+}
+
+EpisodeScreen {
+    DataTable {
+        border: none;
+        border-top: outer $panel;
+        border-title-align: left;
+        border-title-color: $foreground-darken-3;
+        border-left: outer $panel;
+        border-right: outer $panel;
+        &:focus {
+          padding: 0;
+          border-left: outer $accent;
+          border-right: outer $accent;
+          border-top: outer $accent;
+      }
+    }
+
+    Tree {
+        border: none;
+        border-top: outer $panel;
+        border-title-align: left;
+        border-title-color: $foreground-darken-3;
+        border-left: outer $panel;
+        border-right: outer $panel;
+        width: 1fr;
+        min-width: 32;
+        &:focus {
+          padding: 0;
+          border-left: outer $accent;
+          border-right: outer $accent;
+          border-top: outer $accent;
+        }
+    }
+
+    MarkdownViewer {
+        border: none;
+        border-left: outer $panel;
+        &:focus {
+          border-left: outer $accent-lighten-3;
+      }
+    }
+
+    TabbedContent {
+        align-horizontal: right;
+        width: 3fr;
+    }
+
+    TabPane {
+    }
+
 }
 
 CreateEditEpisode, CreateEditProject {
@@ -163,10 +198,6 @@ Horizontal.adjust {
 
 .title {
     padding: 1 1;
-}
-
-.sidebar {
-    width: 32;
 }
 
 .max_height {
