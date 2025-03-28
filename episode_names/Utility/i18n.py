@@ -106,6 +106,7 @@ i18n = LanguageArchive({
     'Project Notes': "Project Notes",
     'Enter Filter here': "Enter Filter here",
     'Duplicate Current': "Duplicate Current",
+    'Copy of': "Copy of",
     'Project Notes Summary': "Project Notes Summary",
     'Edit/Write note for episode': "Edit/Write note for episode",
     'Save Current': "Save Current",
@@ -124,6 +125,7 @@ i18n = LanguageArchive({
     'help: Show keybindings sidebar': "help: Show keybindings sidebar",
     'Display keybindings for the focused widget in a sidebar': "Display keybindings for the focused widget in a sidebar",
     'app: Quit episode_names': "app: Quit episode_names",
+    'warning_delete_current_data': "Importing a new set of data will delete all current data including settings",
     'Data has changed, you really want to abort?': "Data has changed, you really want to abort?",
     'Quit episode_names and return to the command line': 'Quit episode_names and return to the command line'
 }) # Cheap Trick to make sure there is always something

@@ -2,9 +2,9 @@
 
 This is a needlessly complicated tool for a simple job.
 
-The situation was as follows: since 14 years do I make Youtube videos, mostly start-stop lets plays that honestly barely anyone watches. But, I do care and its a good way to get single player games done. Anyway, what I also care about is a proper naming scheme and numbering of all those videos and their description. Over the years I amassed over 10000 videos. My biggest project is Elder Scrolls Online which alone will reach 2000 Videos soon. The naming scheme for each episode is quite complicated and i have to iterate some numbers for every single video, some for sessions.
+The situation was as follows: since 14 years do I make YouTube videos, mostly start-stop lets plays that honestly barely anyone watches. But, I do care and its a good way to get single player games done. Anyway, what I also care about is a proper naming scheme and numbering of all those videos and their description. Over the years I amassed over 10000 videos. My biggest project is Elder Scrolls Online which alone will reach 2000 Videos soon. The naming scheme for each episode is quite complicated and i have to iterate some numbers for every single video, some for sessions.
 
-The solution is this over engineered piece of _equipment_:
+The solution is this overengineered piece of _equipment_:
 
 ![Main Page](./docs/screenshot1.svg)
 
@@ -32,35 +32,38 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 
 ## Todos
 
-- [ ] Making the entire workflow in interface possible
+- [X] Making the entire workflow in interface possible
   - [x] Creating, Editing, Deleting Templates
   - [x] Assigning Templates to Episodes
   - [x] Creating Projects
 - [ ] Logic functions that keep internal numbering consistent
 - [ ] Styling - different colors than default _partially solved by textual 0.86?_
-- [ ] Import/Export of data
+- [X] Import/Export of data
 - [ ] Use proper tools for i18n and not some thrown together gobbligob
-- [ ] Use proper user folders
+- [X] Use proper user folders
 - [ ] add some cli flags for db folders and stuff (user profiles? why though?)
 - [ ] rearrange files by screens and modals
 - [ ] make project tree view more sophisticated
 - [ ] sort projects by episode edited data and category alphabetical
-- [ ] revamp database scheme, currently everything is NotNull and got no defautls in SQL
+- [ ] revamp database scheme, currently everything is NotNull and got no defaults in SQL
 - [ ] Hide/Show Keyboard shortcuts in EpisodeScreen based on currently active modal
 - [ ] Make it so that the db connector does not create objects that are basically empty / work more with SQL restraints
+- [ ] Selected Export for only parts of the projects
 
 ## Ideas
 
-- [ ] Import of all existing stuff I got on Youtube, separate descriptions from rest and make this the one-stop management solution for all my videos
+- [ ] Import of all existing stuff I got on YouTube, separate descriptions from rest and make this the one-stop management solution for all my videos
 - [ ] Find title duplicates
 - [ ] save additional meta data
 - [ ] make the interface more sleek and faster to use for the haxxor experience
-- [ ] hide currently not working keyboard shortcuts
+- [ ] hide currently not relevant keyboard shortcuts
 - [ ] I am currently loading all Episodes from the database multiple times to populate views. This should always be fast even if I had thousands of entries..yet, maybe I should still cache those and only update deltas when needed? It would be way more complicated, but, as an exercise, better
 
 ## Know Issues
 
 * Cannot duplicate template yet
-* For some reasons I broke the scrollability of my main Datatable that contains the episodes, I added a ScrollView but this should not be necessary
+* For some reason I broke the scroll ability of my main Datatable that contains the episodes, I added a ScrollView but this should not be necessary
 * Some number inconsistency, sometimes -1 is assigned which is a bad way
 * Per default, a new project has no template assigned, which might go haywire. Currently, dummy data creates a manual template 0 which should sidestep this
+* Crash when creating template with empty project
+* The project tree view has no scroll bar...

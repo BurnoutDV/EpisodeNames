@@ -82,6 +82,11 @@ class EpisodeScreen(Screen):
         self.write_log("Mounting Done")
         self.projects.focus()
 
+    def _on_screen_resume(self) -> None:
+        if self.app.redraw_after_import[0]:
+            self._init_data()
+            self.app.redraw_after_import = False, self.app.redraw_after_import[1] # this works, but I dont like it
+
     def write_raw_log(self, this, additional_text=""):
         self.app.write_raw_log(this, additional_text)
 
@@ -318,6 +323,8 @@ class EpisodeScreen(Screen):
         if was_selected and was_selected.value:
             new_row = self.entryview.get_row_index(was_selected)
             self.entryview.move_cursor(row=new_row)
+        # generate a new markdown view for this project
+        self._create_markdown_breakdown()
 
     def redraw_project_tree(self, pre_select: int | None = None):
         """

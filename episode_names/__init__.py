@@ -1,4 +1,4 @@
-__version__ = '0.0.7'
+__version__ = '0.1.0'
 
 """
 # Patch Notes
@@ -22,4 +22,11 @@ __version__ = '0.0.7'
 * Project Creation / Edit Menu overhaul
 * Notes on Episodes now work
 * Project Delete
+## 0.1.0
+* Settings Page
+* Export to Markdown Button
+* Im/Export from json (no check, might go horribly wrong)
+* Episode Notes
+* Update to Textual 3.0.0, textual-autocomplete 4.0.4
+* new dependency textual-fspicker
 """

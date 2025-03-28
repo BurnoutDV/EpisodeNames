@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-
+import sys
 # Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
@@ -31,8 +31,9 @@ from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Modals.DialogueModals import YesNoBox
-from episode_names.Screens import EpisodeScreen, TemplateScreen
+from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen
 from episode_names.Utility import MenuProvider, i18n, user_setup
+from __init__ import __version__
 
 __author__ = "Bruno DeVries"
 __license__ = "GPL-3"
@@ -70,15 +71,16 @@ class EpisodeNames(App):
 
     BINDINGS = [
         Binding(key="escape", action="quit_dial", description=i18n['Quit'], show=False),
-        Binding(key="f3", action="open_debug", description="Debug", show=False),
+        Binding(key="f4", action="open_debug", description="Debug", show=False),
         Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode']),
         Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates']),
+        Binding(key="f3", action="switch_mode('settings')", description=i18n['Settings']),
     ]
 
     MODES = {
         "episodes": EpisodeScreen,
-        "templates": TemplateScreen
-        #"settings": SettingsScreen,
+        "templates": TemplateScreen,
+        "settings": SettingsScreen,
         #"help": HelpScreen,
     }
 
@@ -86,10 +88,16 @@ class EpisodeNames(App):
         self.hour_zero = time.time_ns()/1000000
         self.dummy_log = RichLog(id="dummy_log")
         self.debug_open = False
+        self.console_title = f"Episode Names - v{__version__}, DB Version: {__folder_version__}"
+        # ? at least for Konsole the set_window_title does not work
+        sys.stderr.write(f"\x1b]2;{self.console_title}\x07")
+        sys.stderr.flush()
+        self.redraw_after_import = False, False
         super().__init__()
 
     def on_mount(self) -> None:
         self.theme = "flexoki"
+        self.console.set_window_title(self.console_title)
         self.app.switch_mode("episodes")
 
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:

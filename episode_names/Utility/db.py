@@ -39,6 +39,21 @@ from peewee import (
 
 database_proxy = DatabaseProxy()
 
+# TODO: find a better place for this
+def normalize_datetime(in_date: str | datetime | None = None) -> datetime | None:
+    """
+    Normalizes a given date which is either isoformat string or nothing which then becomes now
+    :param in_date: nothing -> now(), str must be isoformat
+    :return: a proper datetime or None
+    """
+    if not in_date:
+        in_date = datetime.now()
+    if isinstance(in_date, str):  # quite sure this does nothing in terms of sqlite
+        in_date = datetime.fromisoformat(in_date)
+    if not isinstance(in_date, datetime):
+        return None
+    return in_date
+
 @dataclass
 class Folge:
     title: str
@@ -50,7 +65,7 @@ class Folge:
     notes: str | None = None
     recording_date: date = date.today()
 
-    db_uid: int = 0  # objects can exists without db connection
+    db_uid: int = 0  # objects can exist without db connection
     db_project: int = 0
     db_template: int = 0
     edit_date: datetime | None = None
@@ -247,6 +262,35 @@ class Project(BaseModel):
         return res
 
     @staticmethod
+    def create_raw(title: str,
+                   category: str = "default",
+                   description: str = "",
+                   edit_date: datetime | str | None = None,
+                   create_date: datetime | str | None = None) -> int:
+        """
+        This creates a new Episode entity, but this time without the help of a playlist and with
+        the ability to manually set the created / edited date to arbitrary date.
+        I created this to facilitate imports of data
+
+        :param title: the title of the project, can not be empty
+        :param category: category to be sorted through, defaults to 'default'
+        :param description: description, can be empty
+        :param edit_date: manually set date for last edit, str must be isoformat
+        :param create_date: manually set date for creation, str must be isoformat
+        :return:
+        """
+        create_date = normalize_datetime(create_date)
+        edit_date = normalize_datetime(edit_date)
+        res = (Project.insert(
+                name = title,
+                category = category,
+                description = description,
+                edit_date = edit_date,
+                create_date = create_date
+            ).execute())
+        return res
+
+    @staticmethod
     def has_counter2(project_id: int) -> bool | None:
         """
         Checks if the given project has any episodes with counter2, should
@@ -378,6 +422,25 @@ class TextTemplate(BaseModel):
                .execute())
         return res
 
+    @staticmethod
+    def create_raw(title: str,
+                   pattern: str | None = "",
+                   tags: str | None = "",
+                   edit_date: datetime | str | None = None,
+                   create_date: datetime | str | None = None) -> int:
+        create_date = normalize_datetime(create_date)
+        edit_date = normalize_datetime(edit_date)
+        if not tags: # TODO null constraint
+            tags = ''
+        res = (TextTemplate.insert(
+                title=title,
+                pattern=pattern,
+                tags=tags,
+                edit_date=edit_date,
+                create_date=create_date
+               ).execute())
+        return res
+
 class Episode(BaseModel):
     title = CharField()
     counter1 = IntegerField(null=False)
@@ -472,6 +535,36 @@ class Episode(BaseModel):
             notes=this.notes,
             template_id=this.db_template,
             project_id=this.db_project
+        ).execute())
+        return res
+
+    @staticmethod
+    def create_raw(title: str,
+                   project_id: int,
+                   counter1: int = 1,
+                   counter2: int | None = 0,
+                   record_date: str | None = None,
+                   session: str = "",
+                   description: str = "",
+                   notes: str | None = None,
+                   template_id: int | None = None,
+                   edit_date: datetime | str | None = None,
+                   create_date: datetime | str | None = None) -> int:
+        # TODO: normalize record_date
+        create_date = normalize_datetime(create_date)
+        edit_date = normalize_datetime(edit_date)
+        res = (Episode.insert(
+            title=title,
+            counter1=counter1,
+            counter2=counter2,
+            record_date=record_date,
+            session=session,
+            description=description,
+            notes=notes,
+            template_id=template_id,
+            project_id=project_id,
+            edit_date=edit_date,
+            create_date=create_date
         ).execute())
         return res
 

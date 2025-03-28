@@ -34,7 +34,7 @@ from episode_names.Utility.db import TextTemplate, PatternTemplate
 class TemplateScreen(Screen):
     BINDINGS = [
         Binding(key="ctrl+n", action="new", description=i18n['Create New']),
-        Binding(key="ctrl+d", action="duplicate", description=i18n['Duplicate Current']), #TODO: implement
+        Binding(key="ctrl+d", action="duplicate", description=i18n['Duplicate Current']),
         Binding(key="ctrl+s", action="save", description=i18n['Save Current']),
         Binding(key="ctrl+del", action="delete", description=i18n['Delete Current']),
         Binding(key="ctrl+l", action="discard", description=i18n['Discard Current']),
@@ -65,13 +65,13 @@ class TemplateScreen(Screen):
 
     def compose(self) -> ComposeResult:
         with Vertical():
-            yield Label(i18n["Template Edit"])
+            yield Label(i18n["Template Management"])
             with Horizontal():
-                with Vertical(classes="sidebar"):
+                with Vertical(id="sidebar"):
                     yield self.filter_bar
                     yield self.templates
                     yield self.helper
-                with Vertical():
+                with Vertical(id="content"):
                     yield self.pattern_name
                     yield self.pattern
                     with Collapsible(collapsed=True, title=i18n['Tags'], id="tag_collapse"):
@@ -87,6 +87,16 @@ class TemplateScreen(Screen):
             self.helper.append(ListItem(Label(each)))
         self.helper.styles.height = len(TemplateScreen.HELPER_TOKENS)
         self.helper.display = False
+        self.templates.border_title = i18n['Templates']
+        self.pattern_name.border_title = i18n['Pattern Name']
+        self.pattern.border_title = i18n['Template Content']
+        self.tags.border_title = i18n['Tags']
+
+    def _on_screen_resume(self) -> None:
+        if self.app.redraw_after_import[1]:
+            self.update_pattern_list()
+            self._action_discard() # * not feeling too good about this one
+            self.app.redraw_after_import = self.app.redraw_after_import[0], False
 
     @on(Tree.NodeSelected, "#template_list")
     def _select_project(self, message: Tree.NodeSelected):
@@ -156,6 +166,33 @@ class TemplateScreen(Screen):
             "",
         )
         self.set_editor(new_template)
+
+    def action_duplicate(self):
+        """
+        Duplicate the current template with one small change..the title. Its basically a pre-written
+        new template
+        :return:
+        """
+        # * boiler plate checks when selecting
+        current = self.templates.cursor_node
+        if not current.data:
+            return False
+        if not current.data['db_uid']:
+            return False
+        uid = current.data['db_uid']
+        data = TextTemplate.as_PTemplate_by_uid(uid)
+        if not data:
+            self.app.notify(i18n['Template with this ID is not in Database'])
+            self.app.write_log(f"DB does not know template with ID {uid}")
+            return False
+        next_id = TextTemplate.get_next_id()
+        new_template = PatternTemplate(
+            title=f"{i18n['Copy of']} {data.title}",
+            pattern=data.pattern,
+            tags=data.tags
+        )
+        self.set_editor(new_template)
+
 
     def set_editor(self, this: PatternTemplate):
         self.pattern_name.disabled = False
