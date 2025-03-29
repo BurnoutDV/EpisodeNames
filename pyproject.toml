@@ -37,6 +37,7 @@ Documentation = "https://codeberg.org/BurnoutDV/EpisodeNames/src/branch/master/R
 
 [project.scripts]
 episode-names = "episode_names.app:run_main"
+episode_names = "episode_names.app:run_main"
 
 [build-system]
 requires = ["hatchling"]
