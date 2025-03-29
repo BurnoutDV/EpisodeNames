@@ -33,13 +33,13 @@ from textual.screen import ModalScreen, Screen
 from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen
 from episode_names.Utility import MenuProvider, i18n, user_setup
-from __init__ import __version__
+from episode_names.__init__ import __version__
 
 __author__ = "Bruno DeVries"
 __license__ = "GPL-3"
 __appname__ = "episode_names"
 __appauthor__ = "BurnoutDV" # my preferred name so to speak
-__folder_version__ = "1.0" # in case of breaking changes, change this
+__folder_version__ = "1.1" # in case of breaking changes, change this
 
 
 class DebugLog(ModalScreen[bool]):
@@ -132,8 +132,11 @@ class EpisodeNames(App):
                 self.exit(message=i18n["Thanks for choosing EpisodNames"])
         self.app.push_screen(YesNoBox(i18n["Do you want to quit?"]), handle_quit_message)
 
-
-if __name__ == "__main__":
+def run_main():
+    print("Running App")
     user_setup(__appname__, __appauthor__, __folder_version__)
     app = EpisodeNames()
     app.run()
+
+if __name__ == "__main__":
+    run_main()
