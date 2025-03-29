@@ -1,3 +1,53 @@
+[project]
+name = "episode-names"
+version = "0.1.0"
+description = "A tool to manage and partially automize the title for episodic video titles and descriptions"
+readme = "README.md"
+authors = [
+    { name = "burnoutdv", email = "development@burnoutdv.com" }
+]
+requires-python = ">=3.12"
+dependencies = ["pyperclip~=1.9.0",
+"textual==3.0.0",
+"peewee==3.17.9",
+"textual-autocomplete==4.0.4",
+"platformdirs>=4.3.7",
+"rich>=13.9.4",
+"textual-fspicker~=0.4.1"]
+license = { file = "LICENSE" }
+keywords = ["tui", "terminal", "textual", "cli", "episode_names"]
+classifiers = [
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "Development Status :: 3 - Alpha",
+        "Environment :: Console",
+        "Operating System :: MacOS",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://codeberg.org/BurnoutDV/EpisodeNames"
+Repository = "https://codeberg.org/BurnoutDV/EpisodeNames"
+Issues = "https://codeberg.org/BurnoutDV/EpisodeNames/issues"
+Documentation = "https://codeberg.org/BurnoutDV/EpisodeNames/src/branch/master/README.md"
+
+[project.scripts]
+episode-names = "episode_names.app:run_main"
+
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "textual-dev>=1.7.0",
+]
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["episode_names"]
