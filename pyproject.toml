@@ -1,6 +1,6 @@
 [project]
 name = "episode-names"
-version = "0.1.0b"
+version = "0.1.0c"
 description = "A tool to manage and partially automize the title for episodic video titles and descriptions"
 readme = "README.md"
 authors = [
