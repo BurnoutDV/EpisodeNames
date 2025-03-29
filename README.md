@@ -2,7 +2,7 @@
 
 This is a needlessly complicated tool for a simple job.
 
-The situation was as follows: since 14 years do I make YouTube videos, mostly start-stop lets plays that honestly barely anyone watches. But, I do care and its a good way to get single player games done. Anyway, what I also care about is a proper naming scheme and numbering of all those videos and their description. Over the years I amassed over 10000 videos. My biggest project is Elder Scrolls Online which alone will reach 2000 Videos soon. The naming scheme for each episode is quite complicated and i have to iterate some numbers for every single video, some for sessions.
+The situation was as follows: since 14 years, I _create_ YouTube videos, mostly start-stop lets plays that honestly barely anyone watches. But, I do care and its a good way to get single player games done. Anyway, what I also care about is a proper naming scheme and numbering of all those videos and their description. Over the years I amassed over 10000 videos. My biggest project is Elder Scrolls Online which alone will reach 2000 Videos soon. The naming scheme for each episode is quite complicated and i have to iterate some numbers for every single video, some for sessions.
 
 The solution is this overengineered piece of _equipment_:
 
@@ -29,6 +29,12 @@ Currently I got ModalScreens, ScreenModes, Notify and one TextArea going for me.
 5. `$ pip install -e .` for editable module installation, this should, hopefully resolve all dependencies
 6. `$ python3 episode_names/Utility/order.py` to create dummy data
 7. `$ python3 episode_names/app.py`
+
+_Or, theoretically_ it should now also work with UV, if I got all the things right and haven't configured it horribly
+
+```bash
+uv tool run episode-names
+```
 
 ## Todos
 
