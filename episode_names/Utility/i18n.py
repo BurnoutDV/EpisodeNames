@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -46,7 +46,7 @@ class LanguageArchive(dict):
             return super().get(item)
 
         def multisub(subs, subject):
-            "Simultaneously perform all substitutions on the subject string."
+            """Simultaneously perform all substitutions on the subject string."""
             # https://stackoverflow.com/a/765835
             pattern = '|'.join('(%s)' % re.escape(p) for p, s in subs)
             substs = [s for p, s in subs]
@@ -64,6 +64,7 @@ i18n = LanguageArchive({
     'Tags': "Tags",
     'Current': "Current",
     'Category': "Category",
+    'Projects': "Projects",
     'Create New': "Create New",
     'Toogle Help': "Toogle Help",
     'New Entry': "Entry:N",

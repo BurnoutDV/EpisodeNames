@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# Copyright 2025 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -31,7 +31,7 @@ from json import JSONDecodeError
 from pathlib import Path
 
 from episode_names.Utility.db import Episode, TextTemplate, Project, Settings, Playlist, normalize_datetime
-
+from episode_names.__init__ import __folder_version__
 
 def export_to_json(file_path: Path | str = "export.json") -> bool:
     """
@@ -98,13 +98,15 @@ def export_to_json(file_path: Path | str = "export.json") -> bool:
     the_great_export['Episodes'] = episodes
     # * %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # * No need for settings, this version (0.0.7) does not have any here
-    the_great_export['__version'] = "0.0.7"
+    the_great_export['__version'] = __folder_version__
     with open(file_path, "w") as json_export_file:
         json.dump(the_great_export, json_export_file, indent=2)
     logging.info(f"Exportet to {file_path}")
     return True
 
 def import_from_json(file_path: Path | str) -> int:
+    # TODO: merge with old data by project_name
+    # TODO: backup current data temporarily
     with open(file_path, "r") as json_import:
         try:
             raw_data = json.load(json_import)
@@ -167,10 +169,11 @@ def import_from_json(file_path: Path | str) -> int:
 def purge_all_user_data(sure=False) -> bool:
     """
     Deletes all content that is not settings
+
     :param bool sure: if you are not sure, nothing happens
     :return: bool
     """
-    if not sure: # this is silly, i know
+    if not sure: # this is silly, I know
         return False
     Project.delete().execute()
     Episode.delete().execute()

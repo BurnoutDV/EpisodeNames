@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-# Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -23,7 +23,7 @@ from typing import Iterable, Literal
 
 import pyperclip
 
-from textual import on
+from textual import on, events
 from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal, ScrollableContainer
@@ -31,6 +31,7 @@ from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, Mar
 from textual.screen import Screen
 
 from episode_names.Utility import i18n
+from episode_names.Utility.custom_widgets import EnPageMarker
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
 from episode_names.Utility.order import new_episode, create_description_text
 from episode_names.Modals import CreateEditProject, AssignTemplate, CreateEditEpisode, WriteNoteModal
@@ -49,6 +50,13 @@ class EpisodeScreen(Screen):
         Binding(key="ctrl+n", action="open_project_note", description=i18n['Project Note']),
     ]
 
+    ACTION_FILTER = {
+        "new_entry": "entryview",
+        "edit_entry": "entryview",
+        "assign_template": "entryview",
+        "copy_text": "entryview"
+    }
+
     def __init__(self):
         self.current_project = None
         self.project_tree = [] # All nodes in project tree
@@ -57,7 +65,7 @@ class EpisodeScreen(Screen):
     def compose(self) -> ComposeResult:#
         self.projects = Tree("Project", id="project_tree")
         self.entryview = DataTable(id="entryview", zebra_stripes=True, cursor_type="row")
-
+        yield EnPageMarker("f1")
         with Horizontal():
             yield self.projects
             with TabbedContent(id="tabs"):
@@ -81,6 +89,7 @@ class EpisodeScreen(Screen):
         #self._dummy_data()
         self.write_log("Mounting Done")
         self.projects.focus()
+        self.write_raw_log(self.app.BINDINGS)
 
     def _on_screen_resume(self) -> None:
         if self.app.redraw_after_import[0]:
@@ -92,6 +101,21 @@ class EpisodeScreen(Screen):
 
     def write_log(self, text):
         self.app.write_log(text)
+
+    @on(events.Focus)
+    def bla(self, message):
+        self.app.write_raw_log(message)
+        self.refresh_bindings()
+
+    def check_action(self, action: str,  parameters: tuple[object, ...]) -> bool | None:
+        # https://textual.textualize.io/guide/actions/#dynamic-actions
+        if not self.app.focused:
+            return False
+        if self.app.focused.id == "entryview":
+            if action in self.ACTION_FILTER and self.ACTION_FILTER[action] == "entryview":
+                return True
+            return False
+        return False
 
     def _action_create_project_menu(self):
         def handle_callback(new_project: Playlist | None) -> None:
@@ -354,6 +378,8 @@ class EpisodeScreen(Screen):
         all_notes_md = f"# {i18n['Project Notes Summary']}\n"
         #! do the playlist notes here Alan
         data_ep = Episode.by_project(self.current_project, order="desc") # maybe it would better to cache this
+        if not data_ep:
+            return False
         for each in data_ep:
             if not each.notes:
                 continue
@@ -361,6 +387,7 @@ class EpisodeScreen(Screen):
             all_notes_md += each.notes + "\n"
         note_md = self.query_one("#combined_view")
         note_md.document.update(all_notes_md)
+        return True
 
 
     def _select_project_tree_entry(self, project_id: int | None = None, fuzzy_name: str | None = None) -> bool:

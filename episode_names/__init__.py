@@ -1,7 +1,11 @@
-__version__ = '0.1.0'
+__version__ = '0.2.0'
+__author__ = "Bruno DeVries"
+__license__ = "GPL-3"
+__appname__ = "episode_names"
+__appauthor__ = "BurnoutDV" # my preferred name so to speak
+__folder_version__ = "1.1" # in case of breaking changes, change this
 
-
-
+__previous_db_versions__ = ['1.0', '1.1'] # ? maybe enrich these with information about the deltas
 """
 # Patch Notes
 ## 0.0.3
@@ -31,4 +35,8 @@ __version__ = '0.1.0'
 * Episode Notes
 * Update to Textual 3.0.0, textual-autocomplete 4.0.4
 * new dependency textual-fspicker
+## 0.2.0
+Bigger Update to add some features I dreamed up in 6 Months
+* additional Columns for Episodes: alt_title, alt_title2, yt_link, description
+* additional Column for Playlist: description
 """

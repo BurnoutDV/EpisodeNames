@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-
-# Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -186,10 +185,9 @@ def user_setup(name, author, version) -> None:
     else:
         db_path = Path(config['absolute_db_path'])
     if db_path.is_file():
-        init_db(db_path)
+        init_db(db_path) # * ~home/.local/share/episode_names/[ver]
     else: # create new db file and drop dummy data into it
-        init_db(db_path)
-        create_dummy_data()
+        init_db(db_path, creation=True)
 
 if __name__ == "__main__":
     init_db()

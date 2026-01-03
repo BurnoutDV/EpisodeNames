@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-# Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -32,6 +32,7 @@ from textual_fspicker import FileSave, FileOpen, Filters
 
 from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Utility import i18n
+from episode_names.Utility.custom_widgets import EnPageMarker
 from episode_names.Utility.db_aux_utility import export_to_json, import_from_json, purge_all_user_data
 
 class SettingsScreen(Screen):
@@ -44,6 +45,7 @@ class SettingsScreen(Screen):
         super().__init__()
 
     def compose(self) -> ComposeResult:
+        yield EnPageMarker("f3")
         with ScrollableContainer():
             yield Label(i18n['The Settings Screen'])
             yield Button(label=i18n['Database2JSON Export'] ,id="export_json", classes="danger")

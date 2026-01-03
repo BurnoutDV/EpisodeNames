@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-import sys
-# Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -21,6 +20,7 @@ import sys
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
 import time
+import sys
 from typing import Iterable
 
 from rich.console import RenderableType
@@ -31,15 +31,9 @@ from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Modals.DialogueModals import YesNoBox
-from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen
+from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen, ModularInterface
 from episode_names.Utility import MenuProvider, i18n, user_setup
-from episode_names.__init__ import __version__
-
-__author__ = "Bruno DeVries"
-__license__ = "GPL-3"
-__appname__ = "episode_names"
-__appauthor__ = "BurnoutDV" # my preferred name so to speak
-__folder_version__ = "1.1" # in case of breaking changes, change this
+from episode_names.__init__ import __version__, __author__, __license__, __appname__, __appauthor__, __folder_version__
 
 
 class DebugLog(ModalScreen[bool]):
@@ -71,16 +65,18 @@ class EpisodeNames(App):
 
     BINDINGS = [
         Binding(key="escape", action="quit_dial", description=i18n['Quit'], show=False),
-        Binding(key="f4", action="open_debug", description="Debug", show=False),
-        Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode']),
-        Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates']),
-        Binding(key="f3", action="switch_mode('settings')", description=i18n['Settings']),
+        Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode'], show=False),
+        Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates'], show=False),
+        Binding(key="f3", action="switch_mode('settings')", description=i18n['Settings'], show=False),
+        Binding(key="f6", action="switch_mode('modular')", description=i18n['Modular'], show=False),
+        Binding(key="f8", action="open_debug", description="Debug", show=False),
     ]
 
     MODES = {
         "episodes": EpisodeScreen,
         "templates": TemplateScreen,
         "settings": SettingsScreen,
+        "modular": ModularInterface
         #"help": HelpScreen,
     }
 

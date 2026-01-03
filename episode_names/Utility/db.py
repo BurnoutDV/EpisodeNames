@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-from operator import truediv
-from pydoc import describe
-# Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
+# Copyright 2026 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
 #
@@ -37,6 +35,7 @@ from peewee import (
     CharField, JOIN, fn, SQL
 )
 
+from episode_names.__init__ import __folder_version__
 database_proxy = DatabaseProxy()
 
 # TODO: find a better place for this
@@ -569,12 +568,16 @@ class Episode(BaseModel):
         return res
 
 class Settings(BaseModel):
-        key = TextField()
+        key = TextField(unique=True)
         value = TextField()
 
-def init_db(db_path="episoden_names.db"):
+def init_db(db_path="episoden_names.db",  creation=False):
     """
     Creates a new db or connects to one if the name exists
+
+    For historic reasons this is one function even when the creation of
+    a new blank database is something very different, but for now this
+    works reasonable well enough I suppose
     :param str db_path: path to database
     :return:
     """
@@ -582,7 +585,17 @@ def init_db(db_path="episoden_names.db"):
     database_proxy.initialize(db)
 
     db.connect()
-    db.create_tables([Episode, Project, TextTemplate, Settings])
+    if creation:
+        db.create_tables([Episode, Project, TextTemplate, Settings])
+        Project.create_raw("Default Project")
+        (Settings
+            .insert(key='db_version', value=__folder_version__)
+            .on_conflict(
+                conflict_target=Settings.key,
+                update={Settings.value: __folder_version__})
+            .execute()
+        )
+    return True
 
 if __name__ == "__main__":
     init_db("../../test.db")

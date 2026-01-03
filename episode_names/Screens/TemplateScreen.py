@@ -29,6 +29,7 @@ from textual.screen import Screen
 
 from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Utility import i18n
+from episode_names.Utility.custom_widgets import EnPageMarker
 from episode_names.Utility.db import TextTemplate, PatternTemplate
 
 class TemplateScreen(Screen):
@@ -65,6 +66,7 @@ class TemplateScreen(Screen):
 
     def compose(self) -> ComposeResult:
         with Vertical():
+            yield EnPageMarker("f2")
             yield Label(i18n["Template Management"])
             with Horizontal():
                 with Vertical(id="sidebar"):
