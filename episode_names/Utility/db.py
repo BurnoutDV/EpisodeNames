@@ -65,6 +65,12 @@ class Folge:
     notes: str | None = None
     recording_date: date = date.today()
 
+    # * Youtube Connection (or any other video site I guess?)
+    yt_link: str | None = None
+    yt_title: str | None = None
+    yt_desc: str | None = None
+    yt_last_link: date | None = None
+
     db_uid: int = 0  # objects can exist without db connection
     db_project: int = 0
     db_template: int = 0
@@ -92,6 +98,10 @@ class Folge:
             description=this.description,
             desc_addon=this.desc_addon,
             notes=this.notes,
+            yt_link=this.yt_link,
+            yt_title=this.yt_title,
+            yt_desc=this.yt_desc,
+            yt_last_link=this.yt_last_link,
             recording_date=this.record_date,
             db_uid=this.id,
             db_project=this.project_id,
@@ -105,6 +115,13 @@ class Playlist:
     title: str
     category: str = ""
     description: str = ""
+    # TODO: add note for Playlist and Project
+    notes: str | None = None
+    # * Youtube Connection (or any other video site I guess?)
+    yt_link: str | None = None
+    yt_title: str | None = None
+    yt_desc: str | None = None
+    yt_last_link: date | None = None
 
     db_uid: int = 0
     opt_newest_episode: datetime | None = None # additional data for tree view
@@ -119,6 +136,11 @@ class Playlist:
             title=this.name,
             category=this.category,
             description=this.description,
+            notes=this.notes,
+            yt_link=this.yt_link,
+            yt_title=this.yt_title,
+            yt_desc=this.yt_desc,
+            yt_last_link=this.yt_last_link,
             opt_newest_episode=newest,
             db_uid=this.id
         )
@@ -179,6 +201,12 @@ class Project(BaseModel):
     name = CharField()
     category = CharField()
     description = TextField()
+    notes = TextField(default="", null=True)
+
+    yt_link = CharField(null=True)
+    yt_title = CharField(null=True, max_length=160)
+    yt_desc = TextField(null=True)
+    yt_last_link = DateTimeField(null=True)
 
     edit_date = DateTimeField(default=datetime.now)
     create_date = DateTimeField(default=datetime.now)
@@ -254,6 +282,11 @@ class Project(BaseModel):
                 name=this.title,
                 category=this.category,
                 description=this.description,
+                notes=this.notes,
+                yt_link=this.yt_link,
+                yt_title=this.yt_title,
+                yt_desc=this.yt_desc,
+                yt_last_link=this.yt_last_link,
                 edit_date=datetime.now()
                 )
                .where(Project.id == this.db_uid)
@@ -265,8 +298,13 @@ class Project(BaseModel):
         res = (Project
                .insert(
                 name=this.title,
-                 category=this.category,
+                category=this.category,
                 description=this.description,
+                notes=this.notes,
+                yt_link=this.yt_link,
+                yt_title=this.yt_title,
+                yt_desc=this.yt_desc,
+                yt_last_link=this.yt_last_link,
                 )
                .execute())
         return res
@@ -275,6 +313,11 @@ class Project(BaseModel):
     def create_raw(title: str,
                    category: str = "default",
                    description: str = "",
+                   notes: str | None = None,
+                   yt_link: str | None = None,
+                   yt_title: str | None = None,
+                   yt_desc: str | None = None,
+                   yt_last_link: datetime | None = None,
                    edit_date: datetime | str | None = None,
                    create_date: datetime | str | None = None) -> int:
         """
@@ -282,6 +325,11 @@ class Project(BaseModel):
         the ability to manually set the created / edited date to arbitrary date.
         I created this to facilitate imports of data
 
+        :param str notes: Project Notes
+        :param str yt_link: YouTube url part, e.g. pxdL8y-0eH0
+        :param str yt_title: the actual title online
+        :param str yt_desc: the online description
+        :param datetime yt_last_link: date of last connection to the internet
         :param title: the title of the project, can not be empty
         :param category: category to be sorted through, defaults to 'default'
         :param description: description, can be empty
@@ -295,6 +343,11 @@ class Project(BaseModel):
                 name = title,
                 category = category,
                 description = description,
+                notes=notes,
+                yt_link=yt_link,
+                yt_title=yt_title,
+                yt_desc=yt_desc,
+                yt_last_link=yt_last_link,
                 edit_date = edit_date,
                 create_date = create_date
             ).execute())
@@ -388,7 +441,6 @@ class TextTemplate(BaseModel):
     title = CharField()
     pattern = TextField(default="", null=True)
     tags = CharField(512, null=True)
-
     # most annoying extra fields to facilitate little changes in a niché
     """
     So what this does, because why not write 20 Lines of inline comment to explain a feature..
@@ -514,6 +566,10 @@ class Episode(BaseModel):
     description = TextField(default='', null=True)
     desc_addon = TextField(default='', null=True)
     notes = TextField(null=True)
+    yt_link = CharField(null=True)
+    yt_title = CharField(null=True, max_length=160)
+    yt_desc = TextField(null=True)
+    yt_last_link = DateTimeField(null=True)
 
     template = ForeignKeyField(TextTemplate, lazy_load=True)
     project = ForeignKeyField(Project, lazy_load=True)
@@ -562,9 +618,15 @@ class Episode(BaseModel):
     @staticmethod
     def update_or_create(this: Folge) -> int:
         """
+        Creates a new Episode entry in the database, OR if the the Folge object contains a
+        db_uid it will instead update the corresponding entry in the database..the will totally
+        predictable go haywire if you just provide an UID that doesnt exist.
 
-        :param this:
+        *Under the hood it just calls Episode.create_new(this) when no db_uid is provided.*
+
+        :param Folge this: a Folge Class object
         :return: uid of the new database entry
+        :rtype: int
         """
         if this.db_uid <= 0:
             return Episode.create_new(this)
@@ -580,6 +642,10 @@ class Episode(BaseModel):
                 description=this.description,
                 desc_addon=this.desc_addon,
                 notes=this.notes,
+                yt_link=this.yt_link,
+                yt_title=this.yt_title,
+                yt_desc=this.yt_desc,
+                yt_last_link=this.yt_last_link,
                 template_id=this.db_template,
                 project_id=this.db_project,
                 edit_date=datetime.now()
@@ -590,6 +656,14 @@ class Episode(BaseModel):
 
     @staticmethod
     def create_new(this: Folge) -> int:
+        """
+        Uses a Folge class to create a new entry.
+        Note: I knew that I could, in theory use the same object for it all..but the DTOs are somewhat
+        hydrated and can contain additional info...for the price of having to handle two structures.
+
+        :param Folge this:
+        :return:
+        """
         if not this.notes:
             this.notes = None
         res = (Episode.insert(
@@ -601,6 +675,10 @@ class Episode(BaseModel):
             description=this.description,
             desc_addon=this.desc_addon,
             notes=this.notes,
+            yt_link=this.yt_link,
+            yt_title=this.yt_title,
+            yt_desc=this.yt_desc,
+            yt_last_link=this.yt_last_link,
             template_id=this.db_template,
             project_id=this.db_project
         ).execute())
@@ -616,9 +694,35 @@ class Episode(BaseModel):
                    description: str = "",
                    desc_addon: str = "",
                    notes: str | None = None,
+                   yt_link: str | None = None,
+                   yt_title: str | None = None,
+                   yt_desc: str | None = None,
+                   yt_last_link: date | None = None,
                    template_id: int | None = None,
                    edit_date: datetime | str | None = None,
                    create_date: datetime | str | None = None) -> int:
+        """
+        Creates a new Episode by manually writing it all out..mostly used for the import logic to
+        save the step of going via an Folge Class.
+
+        :param str title: assigned title of the episode
+        :param int project_id: assigned project by id
+        :param int counter1: first counter
+        :param int counter2: second counter, both should auto-increment
+        :param str record_date: date of recording of this video, not an actual datetime
+        :param str session: free text, Session information
+        :param str description: pure text description without compiled data
+        :param str desc_addon: additional description stuff like timestamps
+        :param str notes: Episode Notes
+        :param str yt_link: YouTube url part, e.g. pxdL8y-0eH0
+        :param str yt_title: the actual title online
+        :param str yt_desc: the online description, including all compiled data
+        :param datetime yt_last_link: date of last connection to the internet
+        :param int template_id: assigned template for text generation
+        :param datetime edit_date: datetime of last edit
+        :param datetime create_date: datetime of the original creation
+        :return: ressource object of pewee, probably 1
+        """
         # TODO: normalize record_date
         create_date = normalize_datetime(create_date)
         edit_date = normalize_datetime(edit_date)
@@ -631,6 +735,10 @@ class Episode(BaseModel):
             description=description,
             desc_addon=desc_addon,
             notes=notes,
+            yt_link=yt_link,
+            yt_title=yt_title,
+            yt_desc=yt_desc,
+            yt_last_link=yt_last_link,
             template_id=template_id,
             project_id=project_id,
             edit_date=edit_date,

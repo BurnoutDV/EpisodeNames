@@ -267,7 +267,8 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         Binding(key="ctrl+r", action="reset", description=i18n['Reset'])
     ]
 
-    def __init__(self, notes: Folge | Playlist | str | None = None):
+    def __init__(self, notes: Folge | Playlist | str | None = None, option: str = "note"):
+        self.notes: Folge | Playlist | str | None = None
         if isinstance(notes, Folge):
             self.modus = 0
             self.notes = notes
@@ -277,6 +278,14 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         else:
             self.modus = 2
             self.notes = notes
+        if option == "desc_addon":
+            self.note_attr = "desc_addon"
+            self.modus = 3
+        elif option == "description":
+            self.modus = 4
+            self.note_attr = "description"
+        else: # std mode, as before a added descriptions
+            self.note_attr = "notes"
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -291,10 +300,10 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
             yield Footer()
 
     def on_mount(self) -> None:
-        note_text = self.query_one("#note_area")
-        if self.modus < 2:
-            if self.notes.notes: # * it might be Null
-                note_text.load_text(self.notes.notes)
+        note_text: TextArea = self.query_exactly_one("#note_area")
+        if self.modus <= 4:
+            if self.notes.__getattribute__(self.note_attr): # * it might be Null
+                note_text.load_text(self.notes.__getattribute__(self.note_attr))
         else:
             if self.notes: # and is not none
                 note_text.load_text(self.notes)
@@ -304,6 +313,18 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         elif self.modus == 1: # * Playlist / Project
             self.title = i18n['Project notes']
             self.sub_title = self.notes.title
+            # * additional changes to the design
+            wrapper : Vertical = self.query_exactly_one("#wrapper")
+            wrapper.add_class('project_note')
+            tx_area : TextArea = self.query_exactly_one("#note_area")
+            tx_area.soft_wrap = True
+            tx_area.show_line_numbers = True
+        elif self.modus == 3: # * Change Additional Description
+            self.title = i18n['Edit Description Addon']
+            self.sub_title = f"#{self.notes.counter1} - {self.notes.title}"
+        elif self.modus == 4: # * Change Solo Description
+            self.title = i18n['Edit Episode Description']
+            self.sub_title = f"#{self.notes.counter1} - {self.notes.title}"
         else:
             self.title = i18n['Generic Note Window']
 
@@ -312,15 +333,15 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         Returns text area to init status
         :return:
         """
-        note_text = self.query_one("#note_area")
+        note_text: TextArea = self.query_exactly_one("#note_area")
         note_text.load_text("") # reset
         self.on_mount()
 
     @on(Button.Pressed, "#btn_save")
     def _action_save(self):
-        note_text = self.query_one("#note_area")
-        if self.modus < 2: # Episode OR Playlist
-            self.notes.notes = note_text.text
+        note_text: TextArea = self.query_exactly_one("#note_area")
+        if self.modus <= 4: # Episode OR Playlist
+            self.notes.__setattr__(self.note_attr, note_text.text.strip())
             self.dismiss(self.notes)
         else:
             self.dismiss(note_text.text)

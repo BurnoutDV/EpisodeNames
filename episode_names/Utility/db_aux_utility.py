@@ -52,6 +52,11 @@ def export_to_json(file_path: Path | str = "export.json") -> bool:
             'name': each.name,
             'category': each.category,
             'description': each.description,
+            'notes': each.notes,
+            'yt_link': each.yt_link,
+            'yt_title': each.yt_title,
+            'yt_desc': each.yt_desc,
+            'yt_last_link': each.yt_last_link,
             'edit_date': each.edit_date.isoformat(),
             'create_date': each.create_date.isoformat()
         }
@@ -94,6 +99,10 @@ def export_to_json(file_path: Path | str = "export.json") -> bool:
                 'description': each.description,
                 'desc_addon': each.desc_addon,
                 'notes': each.notes,
+                'yt_link': each.yt_link,
+                'yt_title': each.yt_title,
+                'yt_desc': each.yt_desc,
+                'yt_last_link': each.yt_last_link,
                 'template': each.template_id,
                 'project': each.project_id
             }
@@ -102,7 +111,22 @@ def export_to_json(file_path: Path | str = "export.json") -> bool:
             return False
     the_great_export['Episodes'] = episodes
     # * %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # * No need for settings, this version (0.0.7) does not have any here
+    # * Settings
+    all_settings = {}
+    res = Settings.select()
+    for each in res:
+        if each.key == "db_version":
+            continue
+        try:
+            all_settings[each.id] = {
+                'uid': each.id,
+                'key': each.key,
+                'value': each.value
+            }
+        except e:
+            logging.error(f"Exception: {e}")
+            return False
+    the_great_export['Settings'] = all_settings
     the_great_export['__version'] = __folder_version__
     with open(file_path, "w") as json_export_file:
         json.dump(the_great_export, json_export_file, indent=2)
@@ -130,6 +154,11 @@ def import_from_json(file_path: Path | str) -> int:
             title=proj['name'],
             category=proj.get('category', 'default'),
             description=proj.get('description', ''),
+            notes=proj.get('notes', None),
+            yt_link=proj.get('yt_link', None),
+            yt_title=proj.get('yt_title', None),
+            yt_desc=proj.get('yt_desc', None),
+            yt_last_link=proj.get('yt_last_link', None),
             edit_date=proj.get('edit_date', None),
             create_date=proj.get('create_date', None)
         )
@@ -164,12 +193,27 @@ def import_from_json(file_path: Path | str) -> int:
             description=epi.get('description', ''),
             desc_addon=epi.get('desc_addon', ''),
             notes=epi.get('notes', ''),
+            yt_link=proj.get('yt_link', None),
+            yt_title=proj.get('yt_title', None),
+            yt_desc=proj.get('yt_desc', None),
+            yt_last_link=proj.get('yt_last_link', None),
             template_id=new_templates[epi['template']],
             project_id=new_projects[epi['project']],
             edit_date=epi.get('edit_date', None),
             create_date=epi.get('create_date', None)
         )
         count+= 1
+    # * Settings exist since v0.2.3
+    if 'Settings' in raw_data:
+        for setti in raw_data['Settings'].values():
+            if not 'uid' in setti:
+                continue
+            # no date, so no need for create_raw
+            res = Settings.update_or_set_key(
+                setti.get('key'),
+                setti.get('value')
+            )
+            count+= 1
     return count
 
     #delete old data

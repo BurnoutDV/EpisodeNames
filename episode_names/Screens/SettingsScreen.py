@@ -25,7 +25,7 @@ from textual import on, work
 from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal, ScrollableContainer
-from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, MarkdownViewer, TextArea, Button, Label, \
+from textual.widgets import DataTable, Footer, Tree, Select, Input, MarkdownViewer, TextArea, Button, Label, \
     Checkbox
 from textual.screen import Screen
 from textual_fspicker import FileSave, FileOpen, Filters
@@ -34,6 +34,7 @@ from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Utility import i18n
 from episode_names.Utility.custom_widgets import EnPageMarker
 from episode_names.Utility.db_aux_utility import export_to_json, import_from_json, purge_all_user_data
+from episode_names.__init__ import __version__
 
 class SettingsScreen(Screen):
     BINDINGS = [
@@ -46,14 +47,35 @@ class SettingsScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield EnPageMarker("f3")
-        with ScrollableContainer():
-            yield Label(i18n['The Settings Screen'])
-            yield Button(label=i18n['Database2JSON Export'] ,id="export_json", classes="danger")
-            yield Checkbox(label=i18n['Delete old data'], id='delete_old')
-            yield Button(label=i18n['Database2JSON Import'] ,id="import_json", classes="danger")
+        with Vertical(id='top_dog'):
+            with Horizontal():
+                yield Label(i18n['The Settings Screen'])
+                yield Button(label=i18n['Save'], id="btn_save")
+                yield Button(label=i18n['Discard'], id="btn_abort")
+        with ScrollableContainer(id='main'):
+
+            with Horizontal(classes='settings', id='con_style'):
+                yield Select([('Custom', 1)], id='sel_theme')
+            with Horizontal(classes='settings', id='con_dateformat'):
+                yield Input(classes="compact_input", id='in_dateformat')
+            with Vertical(classes='settings', id='con_backup'): # TODO: use grid por favor
+                yield Button(label=i18n['Database2JSON Export'] ,id="export_json", classes="danger")
+                with Horizontal():
+                    yield Checkbox(label=i18n['Delete old data'], id='delete_old')
+                    yield Button(label=i18n['Database2JSON Import'] ,id="import_json", classes="danger")
 
     def on_mount(self) -> None:
-        pass
+        self.query_exactly_one("#con_style").border_title = i18n['Style']
+        self.query_exactly_one("#con_dateformat").border_title = i18n['dateformat']
+        self.query_exactly_one("#con_backup").border_title = i18n['Backup']
+        self.query_exactly_one("#in_dateformat").border_subtitle = i18n['Dateformat']
+        theme_selector: Select = self.query_exactly_one('#sel_theme')
+        theme_selector.clear()
+        all_themes = []
+        for each in self.app.available_themes.keys():
+            all_themes.append((each, each))
+        theme_selector.set_options(all_themes)
+        theme_selector.value = self.app.theme
 
     @on(Button.Pressed, "#export_json")
     @work
@@ -64,7 +86,7 @@ class SettingsScreen(Screen):
                 title=i18n['Export as'],
                 save_button=i18n['Save'],
                 cancel_button=i18n['Cancel'],
-                default_file=f"episode_export_{now_str}.json")
+                default_file=f"episode_export_v{__version__}_{now_str}.json")
         ):
             if export_to_json(str(save_to)):
                 self.notify(i18n['Export successful'])

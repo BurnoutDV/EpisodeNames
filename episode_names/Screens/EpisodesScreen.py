@@ -47,6 +47,7 @@ class EpisodeScreen(Screen):
         Binding(key="l", action="edit_project_menu", description=i18n['Edit current Project']),
         Binding(key="ctrl+p", action="create_md", description=i18n['Create MD']),
         Binding(key="n", action="open_episode_note", description=i18n['Episode Note']),
+        Binding(key="v", action="open_episode_desc_addon", description=i18n['Description Addon']),
         Binding(key="ctrl+n", action="open_project_note", description=i18n['Project Note']),
     ]
 
@@ -57,6 +58,7 @@ class EpisodeScreen(Screen):
         "copy_text": {'widget': "entryview", 'action_type':"entry_not_empty"},
         "copy_tags": {'widget': "entryview", 'action_type':"entry_not_empty"},
         "open_episode_note": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "open_episode_desc_addon": {'widget': "entryview", 'action_type': "entry_not_empty"},
         "create_project_menu": {'widget': "project_tree"},
         "edit_project_menu": {'widget': "project_tree"},
         "open_project_note": {'widget': "project_tree"},
@@ -64,7 +66,7 @@ class EpisodeScreen(Screen):
     }
 
     def __init__(self):
-        self.current_project = None
+        self.current_project: int | None = None
         self.project_tree = [] # All nodes in project tree
         super().__init__()
 
@@ -148,14 +150,7 @@ class EpisodeScreen(Screen):
         self.app.push_screen(CreateEditProject(), handle_callback)
 
     def _action_edit_project_menu(self) -> None:
-        current = self.projects.cursor_node
-        if not current.data:
-            self.app.notify(i18n['No project currently selected.'], severity="information", timeout=2)
-            return
-        if not current.data['db_uid']:
-            self.app.notify(i18n['Selected project has no ID, this should not be happen.'], severity="error")
-            return
-        p_uid = current.data['db_uid']
+        p_uid = self._get_playlist_from_project_tree(True)
         self._open_edit_project_menu(p_uid)
 
     def _open_edit_project_menu(self, project_db_id: int) -> None:
@@ -215,6 +210,8 @@ class EpisodeScreen(Screen):
             self.app.push_screen(CreateEditEpisode(None, self.current_project), handle_new_entry_response)
 
     def _action_create_md(self):
+        """Currently writes to database folder"""
+        # TODO: create_md needs Dialogue for place or 'default' option
         if not self.current_project:
             return
         proj = Project.as_Playlist_by_uid(self.current_project)
@@ -231,10 +228,15 @@ class EpisodeScreen(Screen):
         self.app.notify(f"Wrote file: {path_file}")
 
     def _action_open_project_note(self):
-        """Currently (miss)used for debugging purpose"""
-        self.app.write_raw_log(Settings.save_retrieve_key("textual_theme"))
-        self.app.notify(Settings.save_retrieve_key("textual_theme"))
-        return None
+        def project_note_callback(notice: Playlist or None):
+            if not notice:
+                return
+            if not isinstance(notice, Playlist): # * hard type check
+                return
+            Project.update_or_create(notice)
+            self._create_markdown_breakdown() # update overview
+        if this := self._get_playlist_from_project_tree():
+            self.app.push_screen(WriteNoteModal(this), project_note_callback)
 
     def _action_edit_entry(self):
         def handle_edit_entry_response(this: Folge or None):
@@ -317,6 +319,22 @@ class EpisodeScreen(Screen):
             Episode.update_or_create(notice)
             self._create_markdown_breakdown() # update overview
         self.app.push_screen(WriteNoteModal(this), note_callback)
+
+    def _action_open_episode_desc_addon(self):
+        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+        if not row_key:
+            return
+        this = Episode.as_Folge_by_uid(row_key.value)
+        if not this:
+            return
+
+        def desc_addon_callback(notice: Folge or None):
+            if not notice:
+                return
+            if not isinstance(notice, Folge): # * hard type check
+                return
+            Episode.update_or_create(notice)
+        self.app.push_screen(WriteNoteModal(this, option="desc_addon"), desc_addon_callback)
 
 
     def _refill_table_with_project(self,
@@ -413,20 +431,54 @@ class EpisodeScreen(Screen):
     def _create_markdown_breakdown(self) -> bool:
         # it might be more wise to create a separate database method that only retrieves records that actually do
         # have content in the notes section
-        all_notes_md = f"# {i18n['Project Notes Summary']}\n"
+        if not self.current_project:
+            return False
+        all_notes_md = f"# {i18n['Episode Notes Summary']}\n"
+
         #! do the playlist notes here Alan
+        # ? on second thought I think its better to put them in the end
+        # TODO: create database method to only retrieve episodes with notes
         data_ep = Episode.by_project(self.current_project, order="desc") # maybe it would better to cache this
         if not data_ep:
             return False
         for each in data_ep:
             if not each.notes:
                 continue
-            all_notes_md += f"### #{each.counter1}{f' (##{each.counter2})' if each.counter2 else ''} - {each.title}\n\n"
+            all_notes_md += f"## #{each.counter1}{f' (##{each.counter2})' if each.counter2 else ''} - {each.title}\n\n"
             all_notes_md += each.notes + "\n"
-        note_md = self.query_one("#combined_view")
+        # Project notes
+        this_proj = Project.as_Playlist_by_uid(self.current_project)
+        if this_proj.notes:
+            all_notes_md += f"# {i18n['Project Notes']}\n"
+            all_notes_md += f"{this_proj.notes}"
+            self.query_exactly_one("#project_notes").document.update(this_proj.notes)
+        else:
+            empty_note = f"\n\n*{i18n['there is no project note, yet']}*"
+            self.query_exactly_one("#project_notes").document.update(empty_note)
+        note_md : MarkdownViewer = self.query_one("#combined_view")
         note_md.document.update(all_notes_md)
+
         return True
 
+    def _get_playlist_from_project_tree(self, only_puid=False) -> int | Playlist | None:
+        """
+        Boilerplate code to get the currently selected project in the project tree (the left one)
+
+        :param only_puid: for legacy reasons this can also just give the p_uid
+        :return: either the Playlist in question, None if its not possible, or if desired, just the p_uid
+        :rtype: int | Playlist | None
+        """
+        current = self.projects.cursor_node
+        if not current.data:
+            self.app.notify(i18n['No project currently selected.'], severity="information", timeout=2)
+            return None
+        if not current.data['db_uid']:
+            self.app.notify(i18n['Selected project has no ID, this should not be happen.'], severity="error")
+            return None
+        p_uid = current.data['db_uid']
+        if only_puid:
+            return p_uid
+        return Project.as_Playlist_by_uid(p_uid)
 
     def _select_project_tree_entry(self, project_id: int | None = None, fuzzy_name: str | None = None) -> bool:
         """
