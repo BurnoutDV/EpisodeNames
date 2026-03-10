@@ -33,8 +33,42 @@ from textual.screen import ModalScreen, Screen
 from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen, ModularInterface
 from episode_names.Utility import MenuProvider, i18n, user_setup
+from episode_names.Utility.db import Settings
 from episode_names.__init__ import __version__, __author__, __license__, __appname__, __appauthor__, __folder_version__
 
+
+def mirror_s_srk(this_key: str) -> str | None:
+    """
+    Mirror of Settings.save_retrieve_key because for some reasons somethings
+    does not work they way I would it expect to work
+    :param this_key:
+    :return:
+    """
+    try:
+        res = (Settings
+               .select()
+               .where(Settings.key == this_key)
+               .limit(1)
+               .get())
+        return res.value
+    except Settings.DoesNotExist:
+        return None
+
+def mirror_s_uosk(this_key: str, this_value: str) -> bool:
+    """
+    # ! Same as mirror_s_srk
+
+    :param this_key: 
+    :param this_value: 
+    :return: 
+    """
+    return (Settings
+            .insert(key=this_key, value=this_value)
+            .on_conflict(
+                conflict_target=Settings.key,
+                update={Settings.value: this_value}
+            )
+            .execute())
 
 class DebugLog(ModalScreen[bool]):
     """
@@ -92,7 +126,9 @@ class EpisodeNames(App):
         super().__init__()
 
     def on_mount(self) -> None:
-        self.theme = "flexoki"
+        # ! Why do i dont have settings here
+        if saved_theme := mirror_s_srk("textual_theme"):
+            self.theme = saved_theme
         self.console.set_window_title(self.console_title)
         self.app.switch_mode("episodes")
 
@@ -125,6 +161,7 @@ class EpisodeNames(App):
     def action_quit_dial(self):
         def handle_quit_message(dec: bool):
             if dec:
+                mirror_s_uosk("textual_theme", self.app.theme)
                 self.exit(message=i18n["Thanks for choosing EpisodNames"])
         self.app.push_screen(YesNoBox(i18n["Do you want to quit?"]), handle_quit_message)
 

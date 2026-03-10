@@ -68,6 +68,10 @@ def export_to_json(file_path: Path | str = "export.json") -> bool:
             'title': each.title,
             'pattern': each.pattern,
             'tags': each.tags,
+            'description_prefix': each.description_prefix,
+            'description_suffix': each.description_suffix,
+            'description_addon_prefix': each.description_addon_prefix,
+            'description_addon_suffix': each.description_addon_suffix,
             'edit_date': each.edit_date.isoformat(),
             'create_date': each.create_date.isoformat()
         }
@@ -88,6 +92,7 @@ def export_to_json(file_path: Path | str = "export.json") -> bool:
                 'record_date': each.record_date.isoformat(),
                 'session': each.session,
                 'description': each.description,
+                'desc_addon': each.desc_addon,
                 'notes': each.notes,
                 'template': each.template_id,
                 'project': each.project_id
@@ -138,6 +143,10 @@ def import_from_json(file_path: Path | str) -> int:
             title=tpl['title'],
             pattern=tpl.get('pattern', ''),
             tags=tpl.get('tags', ''),
+            description_prefix=tpl.get('description_prefix', '\\n'),
+            description_suffix=tpl.get('description_suffix', '\\n'),
+            description_addon_prefix=tpl.get('description_addon_prefix', '\\n'),
+            description_addon_suffix=tpl.get('description_addon_suffix', '\\n'),
             edit_date=tpl.get('edit_date', None),
             create_date=tpl.get('create_date', None)
         )
@@ -153,6 +162,7 @@ def import_from_json(file_path: Path | str) -> int:
             record_date=epi.get('record_date', date.today()),
             session=epi.get('session', ''),
             description=epi.get('description', ''),
+            desc_addon=epi.get('desc_addon', ''),
             notes=epi.get('notes', ''),
             template_id=new_templates[epi['template']],
             project_id=new_projects[epi['project']],

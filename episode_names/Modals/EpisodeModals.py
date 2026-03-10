@@ -30,8 +30,8 @@ import pyperclip
 from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, Horizontal
-from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header
+from textual.containers import Vertical, Horizontal, ScrollableContainer
+from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header, Collapsible
 from textual.widgets.option_list import Option
 from textual.screen import ModalScreen
 
@@ -184,6 +184,8 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         self.gui_date = Input(placeholder=i18n['Date'], classes="compact_input") # TOdO: find date widget or constrained
         self.gui_counter1 = Input(placeholder="#", classes="compact_input", type="integer")
         self.gui_counter2 = Input(placeholder="##", classes="compact_input", type="integer")
+        self.description = TextArea(id="tx_description", soft_wrap=True, show_line_numbers=True)
+        self.desc_addon = TextArea(id="tx_desc_addon", soft_wrap=True, show_line_numbers=True)
         with Vertical(classes="center_vert"):
             yield Label(f"Edit or Create Entry", classes="title")
             with Horizontal():
@@ -191,9 +193,12 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             with Horizontal():
                 yield self.gui_session
                 yield self.gui_date
-            with Horizontal():
                 yield self.gui_counter1
                 yield self.gui_counter2
+            with Collapsible(collapsed=True, title=i18n['Description Addon'], id="Desc_Addon"):
+                yield self.desc_addon
+            with Collapsible(collapsed=True, title=i18n['Description'], id="Description"):
+                yield self.description
             #yield Checkbox("apply retrograde")
             with Horizontal(classes="adjust"):
                 yield Button(i18n['Save'], id="save")
@@ -203,10 +208,17 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
     def on_mount(self) -> None:
         if isinstance(self.copy_from, Folge):
             self.gui_title.value = self.copy_from.title
+            self.gui_title.border_title = i18n['Title']
             self.gui_session.value = self.copy_from.session
+            self.gui_session.border_subtitle = i18n['Session']
             self.gui_date.value = self.copy_from.recording_date.strftime("%d.%m.%Y")
+            self.gui_date.border_subtitle = i18n['Date']
             self.gui_counter1.value = str(self.copy_from.counter1)
+            self.gui_counter1.border_subtitle = "#"
             self.gui_counter2.value = str(self.copy_from.counter2)
+            self.gui_counter2.border_subtitle = "##"
+            self.description.text = str(self.copy_from.description)
+            self.desc_addon.text = str(self.copy_from.desc_addon)
         else:
             # there has to be some kind of kind of copy from
             self.app.notify(i18n['No suiteable creation method for episode found'], severity="error")
@@ -225,7 +237,8 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             counter1=self.gui_counter1.value,
             counter2=self.gui_counter2.value,
             session=self.gui_session.value,
-            description=self.copy_from.description if self.copy_from else "",
+            description=self.description.text.strip(),
+            desc_addon=self.desc_addon.text.strip(),
             recording_date=rec_date if rec_date else date.today(),
         )
         self.dismiss(form)

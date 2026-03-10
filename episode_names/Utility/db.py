@@ -61,6 +61,7 @@ class Folge:
     counter2: int = 0
     session: str = ""
     description: str = ""
+    desc_addon: str = ""
     notes: str | None = None
     recording_date: date = date.today()
 
@@ -89,6 +90,7 @@ class Folge:
             counter2=this.counter2,
             session=this.session,
             description=this.description,
+            desc_addon=this.desc_addon,
             notes=this.notes,
             recording_date=this.record_date,
             db_uid=this.id,
@@ -149,6 +151,11 @@ class PatternTemplate:
     title: str
     pattern: str = ""
     tags: str = ""
+    # see database model for explanation what this is supposed to be
+    description_prefix: str = "\\n"
+    description_suffix: str = "\\n"
+    description_addon_prefix: str = "\\n"
+    description_addon_suffix: str = "\\n"
     db_uid: int = 0
 
     @staticmethod
@@ -157,7 +164,11 @@ class PatternTemplate:
             title=this.title,
             pattern=this.pattern,
             db_uid=this.id,
-            tags=this.tags  # TODO: implement tags database site
+            tags=this.tags,  # TODO: implement tags database site # what? -- 2026-03-10
+            description_prefix=this.description_prefix,
+            description_suffix=this.description_suffix,
+            description_addon_prefix=this.description_addon_prefix,
+            description_addon_suffix=this.description_addon_suffix
         )
 
 class BaseModel(Model):
@@ -310,6 +321,26 @@ class Project(BaseModel):
             return None
 
     @staticmethod
+    def has_notes(project_id: int) -> bool | None:
+        """
+        Checks if the given projects has any episodes with notes in
+        them, this is a boilerplate of the counter2 thing which
+        begs the question if there is a better solution
+
+        :param project_id: id of the project
+        :return bool: true if there are any entries, otherwise false
+        """
+        try:
+            res = (Episode
+                   .select(Episode.id)
+                   .where(Episode.project_id == project_id)
+                   .where(Episode.notes != '')
+                   .limit(1))
+            return bool(res.count())
+        except Episode.DoesNotExist:  # this should never happen
+            return None
+
+    @staticmethod
     def get_tree_as_playlist() -> list[Playlist] | None:
         """
         Returns the same as dump() BUT ordered by the edit_date of the entries, starting
@@ -355,8 +386,26 @@ class Project(BaseModel):
 
 class TextTemplate(BaseModel):
     title = CharField()
-    pattern = TextField()
-    tags = CharField(512)
+    pattern = TextField(default="", null=True)
+    tags = CharField(512, null=True)
+
+    # most annoying extra fields to facilitate little changes in a niché
+    """
+    So what this does, because why not write 20 Lines of inline comment to explain a feature..
+    Features that dont explain themselves are always the best. So, I added the ability for templates
+    to have descriptions and description addon directly backed in. The problem now is that those fields
+    are in general probably empty and not filled for most projects or episodes, but, if they are there
+    it seems annoying to save additional whitespace or new lines. Especially because the only interface
+    that currently allows editing those features trims the whitespace anyway. So I add those 4 fields 
+    so that one can configure some additional white space, probably I just set the default to new line
+    because that is literally the only usecase I can think of. I will probably forever be the only person
+    ever that uses this niché tool, but I like to pretend I write for an Audience, so I built features 
+    likes this. -- 2026-03-10
+    """
+    description_prefix = TextField(default="\n", null=True)
+    description_suffix = TextField(default="\n", null=True)
+    description_addon_prefix = TextField(default="\n", null=True)
+    description_addon_suffix = TextField(default="\n", null=True)
 
     edit_date = DateTimeField(default=datetime.now)
     create_date = DateTimeField(default=datetime.now)
@@ -402,6 +451,10 @@ class TextTemplate(BaseModel):
                 title=this.title,
                 pattern=this.pattern,
                 tags=this.tags,
+                description_prefix=this.description_prefix,
+                description_suffix=this.description_suffix,
+                description_addon_prefix=this.description_addon_prefix,
+                description_addon_suffix=this.description_addon_suffix,
                 edit_date = datetime.now()
                 )
                .where(TextTemplate.id == this.db_uid)
@@ -415,6 +468,10 @@ class TextTemplate(BaseModel):
                 title=this.title,
                 pattern=this.pattern,
                 tags=this.tags,
+                description_prefix=this.description_prefix,
+                description_suffix=this.description_suffix,
+                description_addon_prefix=this.description_addon_prefix,
+                description_addon_suffix=this.description_addon_suffix,
                 create_date=datetime.now(),
                 edit_date=datetime.now()
                 )
@@ -425,16 +482,24 @@ class TextTemplate(BaseModel):
     def create_raw(title: str,
                    pattern: str | None = "",
                    tags: str | None = "",
+                   description_prefix: str | None = "\\n",
+                   description_suffix: str | None = "\\n",
+                   description_addon_prefix: str | None = "\\n",
+                   description_addon_suffix: str | None = "\\n",
                    edit_date: datetime | str | None = None,
                    create_date: datetime | str | None = None) -> int:
         create_date = normalize_datetime(create_date)
         edit_date = normalize_datetime(edit_date)
-        if not tags: # TODO null constraint
+        if not tags: # TODO null constraint in other logic, database accepts null
             tags = ''
         res = (TextTemplate.insert(
                 title=title,
                 pattern=pattern,
                 tags=tags,
+                description_prefix=description_prefix,
+                description_suffix=description_suffix,
+                description_addon_prefix=description_addon_prefix,
+                description_addon_suffix=description_addon_suffix,
                 edit_date=edit_date,
                 create_date=create_date
                ).execute())
@@ -445,8 +510,9 @@ class Episode(BaseModel):
     counter1 = IntegerField(null=False)
     counter2 = IntegerField(default=0, null=False, constraints=[SQL('DEFAULT 0')])
     record_date = DateField()
-    session = CharField()
-    description = TextField()
+    session = CharField(default='', null=True)
+    description = TextField(default='', null=True)
+    desc_addon = TextField(default='', null=True)
     notes = TextField(null=True)
 
     template = ForeignKeyField(TextTemplate, lazy_load=True)
@@ -492,6 +558,7 @@ class Episode(BaseModel):
             return Folge.from_episode(res)
         except Episode.DoesNotExist:
             return None
+
     @staticmethod
     def update_or_create(this: Folge) -> int:
         """
@@ -511,6 +578,7 @@ class Episode(BaseModel):
                 record_date=this.recording_date,
                 session=this.session,
                 description=this.description,
+                desc_addon=this.desc_addon,
                 notes=this.notes,
                 template_id=this.db_template,
                 project_id=this.db_project,
@@ -531,6 +599,7 @@ class Episode(BaseModel):
             record_date=this.recording_date,
             session=this.session,
             description=this.description,
+            desc_addon=this.desc_addon,
             notes=this.notes,
             template_id=this.db_template,
             project_id=this.db_project
@@ -545,6 +614,7 @@ class Episode(BaseModel):
                    record_date: str | None = None,
                    session: str = "",
                    description: str = "",
+                   desc_addon: str = "",
                    notes: str | None = None,
                    template_id: int | None = None,
                    edit_date: datetime | str | None = None,
@@ -559,6 +629,7 @@ class Episode(BaseModel):
             record_date=record_date,
             session=session,
             description=description,
+            desc_addon=desc_addon,
             notes=notes,
             template_id=template_id,
             project_id=project_id,
@@ -568,8 +639,30 @@ class Episode(BaseModel):
         return res
 
 class Settings(BaseModel):
-        key = TextField(unique=True)
-        value = TextField()
+    key = TextField(unique=True)
+    value = TextField()
+
+    @staticmethod
+    def update_or_set_key(this_key: str, this_value: str) -> bool:
+        (Settings
+            .insert(key=this_key, value=this_value)
+            .on_conflict(
+                conflict_target=Settings.key,
+                update={Settings.value: this_value})
+            .execute()
+        )
+
+    @staticmethod
+    def save_retrieve_key(this_key: str) -> str | None:
+        try:
+            res = (Settings
+             .select()
+             .where(Settings.key == this_key)
+             .limit(1)
+             .get())
+            return res.value
+        except Settings.DoesNotExist:
+            return None
 
 def init_db(db_path="episoden_names.db",  creation=False):
     """
@@ -598,4 +691,4 @@ def init_db(db_path="episoden_names.db",  creation=False):
     return True
 
 if __name__ == "__main__":
-    init_db("../../test.db")
+    init_db("../../test.db", creation=True)

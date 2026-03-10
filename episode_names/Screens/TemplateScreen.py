@@ -48,6 +48,8 @@ class TemplateScreen(Screen):
         "$$counter1$$",
         "$$counter2$$",
         "$$record_date$$",
+        "$$desc_addon$$",
+        "$$description$$",
     ]
 
     def __init__(self):
@@ -55,10 +57,14 @@ class TemplateScreen(Screen):
         self.templates = Tree("Label", id="template_list")
         self.pattern_name = Input(id="pattern_name", placeholder="Name of the Pattern", disabled=True)
         self.pattern = TextArea(id="pattern", disabled=True, soft_wrap=True, show_line_numbers=True)
+        self.desc_prefix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
+        self.desc_suffix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
+        self.desc_a_prefix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
+        self.desc_a_suffix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
         self.tags = TextArea(id='tags', disabled=True, soft_wrap=True)
         self.helper = ListView(id='helper')
         # TODO: define own highlighting scheme for textarea
-        self.current_pattern = None
+        self.current_pattern: PatternTemplate = None
         self.unsaved_patterns: dict[int, PatternTemplate] = {}
         # TODO: logic for not saved patterns
         # TODO: save cursor positions?
@@ -76,6 +82,11 @@ class TemplateScreen(Screen):
                 with Vertical(id="content"):
                     yield self.pattern_name
                     yield self.pattern
+                    with Horizontal(id='presufix'):
+                        yield self.desc_prefix
+                        yield self.desc_suffix
+                        yield self.desc_a_prefix
+                        yield self.desc_a_suffix
                     with Collapsible(collapsed=True, title=i18n['Tags'], id="tag_collapse"):
                         yield self.tags
             yield Footer()
@@ -92,6 +103,11 @@ class TemplateScreen(Screen):
         self.templates.border_title = i18n['Templates']
         self.pattern_name.border_title = i18n['Pattern Name']
         self.pattern.border_title = i18n['Template Content']
+        self.query_exactly_one("#presufix").border_title = i18n['Pre & Suffix']
+        self.desc_prefix.border_subtitle = i18n['DescPrefix']
+        self.desc_suffix.border_subtitle = i18n['DescSuffix']
+        self.desc_a_prefix.border_subtitle = i18n['DescAPrefix']
+        self.desc_a_suffix.border_subtitle = i18n['DescASuffix']
         self.tags.border_title = i18n['Tags']
 
     def _on_screen_resume(self) -> None:
@@ -138,6 +154,10 @@ class TemplateScreen(Screen):
             return
         self.current_pattern.pattern =  self.pattern.text
         self.current_pattern.title = self.pattern_name.value
+        self.current_pattern.description_prefix = self.desc_prefix.value
+        self.current_pattern.description_suffix = self.desc_suffix.value
+        self.current_pattern.description_addon_prefix = self.desc_a_prefix.value
+        self.current_pattern.description_addon_suffix = self.desc_a_suffix.value
         self.current_pattern.tags = self.tags.text
         TextTemplate.update_or_create(self.current_pattern)
         self._action_discard() # clear up view
@@ -151,6 +171,14 @@ class TemplateScreen(Screen):
         self.pattern.clear()
         self.query_one('#tag_collapse').collapsed = True
         self.tags.disabled = True
+        self.desc_suffix.disabled = True
+        self.desc_suffix.value = ""
+        self.desc_prefix.disabled = True
+        self.desc_prefix.value = ""
+        self.desc_a_prefix.disabled = True
+        self.desc_a_prefix.value = ""
+        self.desc_a_suffix.disabled = True
+        self.desc_a_suffix.value = ""
         self.tags.clear()
         self.templates.focus()
 
@@ -203,6 +231,14 @@ class TemplateScreen(Screen):
         self.pattern.load_text(this.pattern)
         self.pattern.move_cursor((0,0))
         self.pattern.focus()
+        self.desc_suffix.disabled = False
+        self.desc_suffix.value = this.description_suffix
+        self.desc_prefix.disabled = False
+        self.desc_prefix.value = this.description_prefix
+        self.desc_a_prefix.disabled = False
+        self.desc_a_prefix.value = this.description_addon_prefix
+        self.desc_a_suffix.disabled = False
+        self.desc_a_suffix.value = this.description_addon_suffix
         self.current_pattern = this
         self.tags.disabled = False
         if this.tags:

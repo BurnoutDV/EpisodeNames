@@ -123,12 +123,34 @@ def create_description_text(this: Folge) -> str or None:
     :return:
     """
     def multisub(subs, subject):
-        "Simultaneously perform all substitutions on the subject string."
+        """
+        Simultaneously perform all substitutions on the subject string.
+        """
         # https://stackoverflow.com/a/765835
         pattern = '|'.join('(%s)' % re.escape(p) for p, s in subs)
         substs = [s for p, s in subs]
         replace = lambda m: substs[m.lastindex - 1]
         return re.sub(pattern, replace, subject)
+
+    def temporary_real_escape(temple: PatternTemplate) -> PatternTemplate:
+        """
+        I like to have the escape sequences in plain text in the database,
+        but for them to actually work we need them in their true form, this
+        makes that possible. Boilerplate inc.
+        :return: PatternTemplate enriched Template
+        """
+        attributes = ['description_prefix', 'description_suffix',
+                      'description_addon_prefix', 'description_addon_suffix']
+        # * yes this is hack, I don't feel any remorse
+        for each in attributes:
+            temp = multisub([
+                (r'\n', '\n'),
+                (r'\t', '\t'),
+                (r'\r', '\r'),
+            ],
+            temple.__getattribute__(each))
+            temple.__setattr__(each, temp)
+        return temple
 
     if not this.db_template:
         return None
@@ -137,10 +159,23 @@ def create_description_text(this: Folge) -> str or None:
     if not text:
         return None # If no template is assigned
 
+    text = temporary_real_escape(text)
+    # ? prep step for suffix & prefix of description stuff
+    if this.description.strip():
+        this.description = (text.description_prefix +
+                            this.description +
+                            text.description_suffix)
+    if this.desc_addon.strip():
+        this.desc_addon = (text.description_addon_prefix +
+                            this.desc_addon +
+                            text.description_addon_suffix)
+
     return multisub([
         ("$$counter1$$", str(this.counter1)),
         ("$$counter2$$", str(this.counter2)),
         ("$$session$$", this.session),
+        ("$$desc_addon$$", this.desc_addon),
+        ("$$description$$", this.description),
         ("$$record_date$$", this.recording_date.strftime("%d.%m.%Y")), # TODO: make this setting
         ("$$title$$", this.title)
         ], text.pattern)
@@ -186,7 +221,7 @@ def user_setup(name, author, version) -> None:
         db_path = Path(config['absolute_db_path'])
     if db_path.is_file():
         init_db(db_path) # * ~home/.local/share/episode_names/[ver]
-    else: # create new db file and drop dummy data into it
+    else: # create new db file
         init_db(db_path, creation=True)
 
 if __name__ == "__main__":

@@ -31,7 +31,23 @@ AutoComplete {
 }
 
 .compact_input {
-    width: 50%;
+    width: 1fr;
+    height: 2;
+    border: vkey $foreground-darken-3;
+    border-bottom: vkey $foreground-darken-3;
+    border-top: none;
+    margin-left: 1;
+    margin-right: 1;
+    border-subtitle-color: $background-lighten-3;
+    border-subtitle-background: transparent;
+    border-subtitle-align: left;
+    background: $background 40%;
+    &:focus {
+        border: vkey $primary;
+        border-bottom: vkey $primary;
+        border-top: none;
+        background: $panel 30%;
+    }
 }
 
 EpisodeScreen {
@@ -88,6 +104,47 @@ EpisodeScreen {
 CreateEditEpisode, CreateEditProject {
     align: center middle;
     background: rgba(0, 40, 40, 0.5);
+}
+
+CreateEditEpisode {
+    ScrollableContainer {
+        height: auto;
+    }
+
+    Vertical {
+        overflow-y: auto;
+    }
+
+    Horizontal {
+        width: 1fr;
+    }
+
+    Input {
+        border: round $foreground-darken-3;
+        background: transparent;
+        &:focus {
+            border-title-color: $primary;
+            border: round $primary;
+        }
+    }
+    Collapsible {
+        height: auto;
+        margin-left: 1;
+        margin-right: 1;
+        padding-bottom: 1;
+        border: none;
+        border-top: outer $foreground-darken-3;
+        background: $surface-lighten-1;
+
+        &:focus-within {
+            border-top: outer $accent;
+        }
+        TextArea {
+            padding: 0;
+            height: auto;
+            max-height: 10
+        }
+    }
 }
 
 CreateEditProject {
@@ -167,7 +224,7 @@ TemplateScreen {
 
     }
 
-    Tree, Input, TextArea {
+    Tree, Input, TextArea, #presufix {
         border: none;
         border-top: outer $panel;
         border-title-align: left;
@@ -175,7 +232,16 @@ TemplateScreen {
         border-left: outer $panel;
         border-right: outer $panel;
         &:focus {
-              padding: 0;
+              border-left: outer $accent;
+              border-right: outer $accent;
+              border-top: outer $accent;
+              background: $surface-lighten-1;
+          }
+    }
+
+    #presufix {
+        height: 4;
+        &:focus-within {
               border-left: outer $accent;
               border-right: outer $accent;
               border-top: outer $accent;
@@ -262,8 +328,8 @@ Button#btn_cancel
 .center_vert {
     padding: 0 1;
     width: 80%;
-    height: auto;
-    max-height: 24;
+    height: 90%;
+    /*max-height: 24;*/
     border: thick $background 80%;
     background: $surface;
 }

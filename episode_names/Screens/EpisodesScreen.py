@@ -18,10 +18,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
-
 from typing import Iterable, Literal
 
 import pyperclip
+from rich.text import Text
 
 from textual import on, events
 from textual.app import ComposeResult, SystemCommand
@@ -32,7 +32,7 @@ from textual.screen import Screen
 
 from episode_names.Utility import i18n
 from episode_names.Utility.custom_widgets import EnPageMarker
-from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
+from episode_names.Utility.db import Project, Playlist, Episode, Settings, Folge, TextTemplate, PatternTemplate
 from episode_names.Utility.order import new_episode, create_description_text
 from episode_names.Modals import CreateEditProject, AssignTemplate, CreateEditEpisode, WriteNoteModal
 
@@ -45,16 +45,22 @@ class EpisodeScreen(Screen):
         Binding(key="t", action="copy_tags", description=i18n['Copy Tags']),
         Binding(key="k", action="create_project_menu", description=i18n['Create Project']),
         Binding(key="l", action="edit_project_menu", description=i18n['Edit current Project']),
-        #Binding(key="ctrl+n", action="create_md", description=i18n['Create MD']),
+        Binding(key="ctrl+p", action="create_md", description=i18n['Create MD']),
         Binding(key="n", action="open_episode_note", description=i18n['Episode Note']),
         Binding(key="ctrl+n", action="open_project_note", description=i18n['Project Note']),
     ]
 
     ACTION_FILTER = {
-        "new_entry": "entryview",
-        "edit_entry": "entryview",
-        "assign_template": "entryview",
-        "copy_text": "entryview"
+        "new_entry": {'widget': "entryview"},
+        "edit_entry": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "assign_template": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "copy_text": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "copy_tags": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "open_episode_note": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "create_project_menu": {'widget': "project_tree"},
+        "edit_project_menu": {'widget': "project_tree"},
+        "open_project_note": {'widget': "project_tree"},
+        "create_md": {'widget': "project_tree"},
     }
 
     def __init__(self):
@@ -76,7 +82,7 @@ class EpisodeScreen(Screen):
                     yield MarkdownViewer(id='project_notes', show_table_of_contents=False)
                 with TabPane(i18n['All Notes']):
                     yield MarkdownViewer(id="combined_view", show_table_of_contents=False)
-        yield Footer()
+        yield Footer(id="heinz")
 
     def on_mount(self) -> None:
         self.write_log("Starting EpisodeNames")
@@ -89,7 +95,7 @@ class EpisodeScreen(Screen):
         #self._dummy_data()
         self.write_log("Mounting Done")
         self.projects.focus()
-        self.write_raw_log(self.app.BINDINGS)
+
 
     def _on_screen_resume(self) -> None:
         if self.app.redraw_after_import[0]:
@@ -102,18 +108,34 @@ class EpisodeScreen(Screen):
     def write_log(self, text):
         self.app.write_log(text)
 
-    @on(events.Focus)
-    def bla(self, message):
-        self.app.write_raw_log(message)
-        self.refresh_bindings()
-
     def check_action(self, action: str,  parameters: tuple[object, ...]) -> bool | None:
+        """
+        Dynamic function that apparently gets called everytime another widget is in focus
+        Here this dynamically changes the available actions based on which widget is choosen
+        Yes this could have been done differently by creating compound widget and giving
+        them visible hotkey..but this would have needed refactoring and this is hopefully
+        not burning too much juice
+
+        :param action:
+        :param parameters:
+        :return:
+        """
         # https://textual.textualize.io/guide/actions/#dynamic-actions
         if not self.app.focused:
             return False
-        if self.app.focused.id == "entryview":
-            if action in self.ACTION_FILTER and self.ACTION_FILTER[action] == "entryview":
-                return True
+        if self.app.focused.id in ["entryview", "project_tree"]:
+            if action in self.ACTION_FILTER and self.ACTION_FILTER[action]['widget'] == self.app.focused.id:
+                if self.ACTION_FILTER[action].get('action_type', None) == 'entry_not_empty':
+                    # ? boilerplate, I _could_ check the database for emptiness..but, no
+                    row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+                    if not row_key: # even the empty project has one line..so this never happens?
+                        return False
+                    this = Episode.as_Folge_by_uid(row_key.value)
+                    if not this: # this feels kinda expensive, but it should happen that often
+                        return False
+                    return True
+                else:
+                    return True
             return False
         return False
 
@@ -208,6 +230,12 @@ class EpisodeScreen(Screen):
                 md_file.write(f"\n`{each.edit_date}`\n")
         self.app.notify(f"Wrote file: {path_file}")
 
+    def _action_open_project_note(self):
+        """Currently (miss)used for debugging purpose"""
+        self.app.write_raw_log(Settings.save_retrieve_key("textual_theme"))
+        self.app.notify(Settings.save_retrieve_key("textual_theme"))
+        return None
+
     def _action_edit_entry(self):
         def handle_edit_entry_response(this: Folge or None):
             if not this:
@@ -221,6 +249,7 @@ class EpisodeScreen(Screen):
             if this:
                 self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
                 return
+
     def _action_copy_tags(self):
         """
         Copies tags of the currently selected episode to the clipboard
@@ -260,7 +289,7 @@ class EpisodeScreen(Screen):
         # https://darren.codes/posts/textual-copy-paste/
         # App.copy_to_clipboard(this)
 
-    def action_assign_template(self):
+    def _action_assign_template(self):
         def template_callback(cur_episode: Folge or None):
             if not cur_episode:
                 return
@@ -272,7 +301,7 @@ class EpisodeScreen(Screen):
             this = Episode.as_Folge_by_uid(row_key.value)
             self.app.push_screen(AssignTemplate(this), template_callback)
 
-    def action_open_episode_note(self):
+    def _action_open_episode_note(self):
         row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
         if not row_key:
             return
@@ -318,17 +347,23 @@ class EpisodeScreen(Screen):
             self.entryview.add_column("Message")
             self.entryview.add_row("No entries for this project")
             return False
+        # ? we build the maximal table and then remove what is superflous
         self.entryview.add_column("#")
         self.entryview.add_column("##", key="counter2")
         self.entryview.add_column(i18n['Session'])
         self.entryview.add_column(i18n['Record Date'])
         self.entryview.add_column(i18n['Title'])
+        self.entryview.add_column(i18n['Notes'], key='notes')
         self.entryview.add_column(i18n['Template'])
-        # TODO: concat template name into episode
+        # TODO: concat template name into episode # * I dont know what I meant
+        note_row = Text('N', style="italic", justify="center")
+        no_template = Text(i18n['No Template'], style="bold #FF0000")
         for each in data_ep:
             template = each.db_template
             if each.joined_template_title:
                 template = each.joined_template_title
+            if template == 0:
+                template = no_template
             self.entryview.add_row(
                 *[
                     each.counter1,
@@ -336,13 +371,16 @@ class EpisodeScreen(Screen):
                     each.session,
                     each.recording_date.strftime("%d.%m.%Y"),
                     each.title,
-                    template
+                    note_row if each.notes else '',
+                    template,
                 ],
                 key=each.db_uid
             )
         # hide counter2 row when there are now values in there
         if not Project.has_counter2(self.current_project):
             self.entryview.remove_column("counter2")  # the only column with a key as of now
+        if not Project.has_notes(self.current_project):
+            self.entryview.remove_column('notes')
         # highlight the previos cell, I have the sneaking suspicion that this will break somewhen
         if was_selected and was_selected.value:
             new_row = self.entryview.get_row_index(was_selected)

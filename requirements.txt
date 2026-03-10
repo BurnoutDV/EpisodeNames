@@ -1,7 +1,0 @@
-pyperclip~=1.11.*
-textual~=6.12.*
-peewee~=3.18.*
-textual-autocomplete~=4.0.*
-platformdirs>=4.5.*
-rich>=14.2.*
-textual-fspicker~=0.6.*

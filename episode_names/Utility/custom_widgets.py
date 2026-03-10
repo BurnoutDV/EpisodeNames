@@ -30,11 +30,13 @@ def binding_text(key_bind: str, content: str) -> str:
 class EnPageMarker(Widget):
     DEFAULT_CSS = """
     EnPageMarker {
+        height: 2;
         Tabs {
             height: 2;
             background: $footer-background;
         }
         Tab {
+            height: 1;
             background: $footer-background;
             color: $footer-foreground;
         }
@@ -66,6 +68,8 @@ class EnPageMarker(Widget):
         if obj := self.query_one(f"#{self.active_tab}"): # this is brittle
             self.query_one("#tab_interface").active = obj.id
 
+    # ! this does not actually work
+    # TODO: make this work so I can enable the actual widget again
     @on(Tabs.TabActivated)
     def switch_emulation(self, message: Tabs.TabActivated):
         if message.tab.id in self.switch_map:
