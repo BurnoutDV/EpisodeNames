@@ -73,7 +73,7 @@ class TemplateScreen(Screen):
     def compose(self) -> ComposeResult:
         with Vertical():
             yield EnPageMarker("f2")
-            yield Label(i18n["Template Management"])
+            #yield Label(i18n["Template Management"])
             with Horizontal():
                 with Vertical(id="sidebar"):
                     yield self.filter_bar
@@ -98,7 +98,8 @@ class TemplateScreen(Screen):
         self.templates.focus()
         for each in TemplateScreen.HELPER_TOKENS:
             self.helper.append(ListItem(Label(each)))
-        self.helper.styles.height = len(TemplateScreen.HELPER_TOKENS)
+        self.helper.styles.height = len(TemplateScreen.HELPER_TOKENS)+1
+        self.helper.border_title = i18n['Placeholder Variables']
         self.helper.display = False
         self.templates.border_title = i18n['Templates']
         self.pattern_name.border_title = i18n['Pattern Name']
@@ -261,3 +262,4 @@ class TemplateScreen(Screen):
         for each in patterns:
             line = f"{each.title} [#{each.db_uid}-{len(each.pattern)}]"
             self.templates.root.add_leaf(line, data={'db_uid': each.db_uid})
+

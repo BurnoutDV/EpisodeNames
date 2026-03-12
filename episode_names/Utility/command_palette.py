@@ -125,6 +125,15 @@ class MenuProvider(Provider):
 
         commands_to_show.append(
             (
+                i18n["app: Debug Command"],
+                app.action_debug,
+                i18n['Does whatever the current debug command does'],
+                True,
+             ),
+        )
+
+        commands_to_show.append(
+            (
                 i18n["app: Quit episode_names"],
                 app.action_quit,
                 i18n["Quit episode_names and return to the command line"],

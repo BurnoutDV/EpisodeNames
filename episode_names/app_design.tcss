@@ -224,7 +224,13 @@ TemplateScreen {
 
     }
 
-    Tree, Input, TextArea, #presufix {
+    #helper {
+        ListItem {
+            height: 1;
+        }
+    }
+
+    Tree, Input, TextArea, #presufix, #helper, #tag_collapse {
         border: none;
         border-top: outer $panel;
         border-title-align: left;
@@ -256,9 +262,17 @@ TemplateScreen {
         width: 3fr;
     }
 
-    #filter {
+    #filter { /*compact text input line */
         border: none;
-        padding-left: 2;
+        padding-left: 1;
+        border-left: outer $panel;
+        border-right: outer $panel;
+        background: $surface;
+        &:focus {
+            border-left: outer $accent;
+            border-right: outer $accent;
+            background: $surface-lighten-1;
+        }
     }
 
     #pattern {
@@ -266,16 +280,21 @@ TemplateScreen {
     }
 
     #tag_collapse {
-        border: none;
-        background: $surface;
-        &:focus {
-            background: $surface;
-        }
+        padding:0;
+        padding-bottom: 1;
+        &:focus-within {
+              border-left: outer $accent;
+              border-right: outer $accent;
+              border-top: outer $accent;
+              background: $surface-lighten-1;
+          }
     }
 
     #tags {
+        margin: 0;
         border: none;
-        height: 1fr;
+        padding: 0;
+        height: 6;
     }
 
     Label {
@@ -455,4 +474,28 @@ WriteNoteModal {
     border:none;
     height: 1;
     background: $panel;
+}
+
+ConfirmMessageBox {
+    align: right middle;
+    background: $error 30%;
+    Vertical {
+        width: 60%;
+        height: 80%;
+        margin-right: 5;
+        border: ascii $accent;
+        background: $panel;
+    }
+    MarkdownViewer {
+        margin-left: 1;
+        padding: 0;
+    }
+    Checkbox {
+        margin: 1;
+        height: 3;
+    }
+
+    .buttons {
+        height: 5;
+    }
 }

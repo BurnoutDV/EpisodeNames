@@ -292,6 +292,7 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         with Vertical(id="wrapper"):
             with Vertical():
                 yield Header(id="headline")
+                # TODO: collapse when others are open
                 with Horizontal(classes="max-height"):
                     yield TextArea(text="", id="note_area")
                 with Horizontal(classes="adjust"):
@@ -350,6 +351,13 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
     def _action_abort(self):
         self.dismiss(None)
 
+    @on(Collapsible.Expanded, "#Desc_Addon")
+    def _collapse_bonanza1(self) -> None:
+        """
+        Closes the other collapsible
+        """
+        other: Collapsible = self.query_exactly_one("#Description")
+        other.collapsed = True
 
 class GenericCopyModal(ModalScreen[str | None]):
     BINDINGS = [

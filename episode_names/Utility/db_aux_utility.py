@@ -29,9 +29,10 @@ import logging
 from datetime import datetime, date
 from json import JSONDecodeError
 from pathlib import Path
+from platformdirs import user_data_dir
 
 from episode_names.Utility.db import Episode, TextTemplate, Project, Settings, Playlist, normalize_datetime
-from episode_names.__init__ import __folder_version__
+from episode_names.__init__ import __folder_version__, __previous_db_versions__,__appname__, __appauthor__
 
 def export_to_json(file_path: Path | str = "export.json") -> bool:
     """
@@ -233,3 +234,19 @@ def purge_all_user_data(sure=False) -> bool:
     Episode.delete().execute()
     TextTemplate.delete().execute()
     return True
+
+def previous_versions() -> list:
+    """
+    Checks if there are database files present from previos iterations of the database
+    scheme.
+    :return: list of other databases that once where
+    """
+    confirmed_old = []
+    for old_version in __previous_db_versions__:
+        user_dir = user_data_dir(__appname__, __appauthor__, version=old_version)
+
+        if Path(user_dir).is_dir() and Path(user_dir).glob("*.db"):
+            confirmed_old.append(old_version)
+    # ? I had the thought of giving the filesize of each db file back..but honestly, this seems
+    # ? like unecessary work because I then need average init file size for each db revision
+    return confirmed_old

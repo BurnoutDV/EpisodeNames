@@ -30,10 +30,11 @@ from textual.containers import Vertical
 from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
-from episode_names.Modals.DialogueModals import YesNoBox
+from episode_names.Modals.DialogueModals import YesNoBox, ConfirmMessageBox
 from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen, ModularInterface
 from episode_names.Utility import MenuProvider, i18n, user_setup
 from episode_names.Utility.db import Settings
+from episode_names.Utility.db_aux_utility import previous_versions
 from episode_names.__init__ import __version__, __author__, __license__, __appname__, __appauthor__, __folder_version__
 
 
@@ -131,6 +132,18 @@ class EpisodeNames(App):
             self.theme = saved_theme
         self.console.set_window_title(self.console_title)
         self.app.switch_mode("episodes")
+        # check if update has occured
+        old_versions = previous_versions()
+
+        unconfirmed = []
+        if old_versions:
+            for each in old_versions:
+                # TODO: make this as unified string somewhere
+                if not mirror_s_srk(f'aknowledge_old_version_{each}'):
+                    unconfirmed.append(each)
+        if unconfirmed:
+            self.show_old_db_modal(unconfirmed)
+
 
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
         yield from super().get_system_commands(screen)
@@ -145,8 +158,30 @@ class EpisodeNames(App):
         delta_time = round(time.time_ns()/1000000 - self.hour_zero,2)
         self.dummy_log.write(f"{delta_time} - {text}")
 
+    def show_old_db_modal(self, versions: list) -> None:
+        if len(versions) <= 0:
+            return None
+        def dialogue_callback(status: bool):
+            if status: # * aka, checkbox checked for aknowledgement
+                for each in versions:
+                    mirror_s_uosk(f'aknowledge_old_version_{each}', "checked")
+        self.app.push_screen(
+            ConfirmMessageBox(i18n.t('Old_Version_blues', {'%%versions%%': ", ".join(versions)}),
+                              aknowledge=True,
+                              confirm_text=i18n['Confirm that you understand and have read']),
+            dialogue_callback)
+
     def _action_show_templates(self):
         self.app.switch_mode('templates')
+
+    def action_debug(self):
+        """
+        A malable command for the command palette that does whatever I need
+        just right now combined in a convenient reachable place
+        :return:
+        """
+        # ? currently: Theme Variables:
+        self.write_raw_log(self.app.theme_variables)
 
     def _action_open_debug(self):
         if self.debug_open:
@@ -158,11 +193,15 @@ class EpisodeNames(App):
         self.debug_open = True
         self.app.push_screen(DebugLog(self.dummy_log), handle_debug)
 
+    def action_quit(self) -> None:
+        # TODO: save other interface choices here
+        mirror_s_uosk("textual_theme", self.app.theme)
+        self.exit(message=i18n["Thanks for choosing EpisodeNames"])
+
     def action_quit_dial(self):
         def handle_quit_message(dec: bool):
             if dec:
-                mirror_s_uosk("textual_theme", self.app.theme)
-                self.exit(message=i18n["Thanks for choosing EpisodNames"])
+                self.action_quit()
         self.app.push_screen(YesNoBox(i18n["Do you want to quit?"]), handle_quit_message)
 
 def run_main():

@@ -2,7 +2,7 @@
 
 This is a needlessly complicated tool for a simple job.
 
-The situation was as follows: since 14 years, I _create_ YouTube videos, mostly start-stop lets plays that honestly barely anyone watches. But, I do care and its a good way to get single player games done. Anyway, what I also care about is a proper naming scheme and numbering of all those videos and their description. Over the years I amassed over 10000 videos. My biggest project is *Elder Scrolls Online* which alone reached 2000 Videos soon. The naming scheme for each episode is quite complicated and I have to iterate some numbers for every single video, some for sessions.
+The situation was as follows: since 15 years, I _create_ YouTube videos, mostly start-stop lets plays that honestly barely anyone watches. But, I do care and its a good way to get single player games done. Anyway, what I also care about is a proper naming scheme and numbering of all those videos and their description. Over the years I amassed over 10000 videos. My biggest project is *Elder Scrolls Online* which alone reached 2000 Videos soon. The naming scheme for each episode is quite complicated and I have to iterate some numbers for every single video, some for sessions.
 
 The solution is this overengineered piece of _equipment_:
 

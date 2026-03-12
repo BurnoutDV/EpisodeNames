@@ -394,6 +394,30 @@ class Project(BaseModel):
             return None
 
     @staticmethod
+    def has_additional_short_identifier(project_id: int) -> bool | None:
+        """
+        Checks if the given projects has any episodes with **notes**, **description**
+        **desc_addon** or **yt_link** in it
+        *This is a boilerplate of the counter2 thing which
+        begs the question if there is a better solution*
+
+        :param project_id: id of the project
+        :return bool: true if there are any entries, otherwise false
+        """
+        try:
+            res = (Episode
+                   .select(Episode.id)
+                   .where(Episode.project_id == project_id)
+                   .where((Episode.notes != '') |
+                          (Episode.description != '') |
+                          (Episode.desc_addon != '') |
+                          (Episode.yt_link != ''))
+                   .limit(1))
+            return bool(res.count())
+        except Episode.DoesNotExist:  # this should never happen
+            return None
+
+    @staticmethod
     def get_tree_as_playlist() -> list[Playlist] | None:
         """
         Returns the same as dump() BUT ordered by the edit_date of the entries, starting

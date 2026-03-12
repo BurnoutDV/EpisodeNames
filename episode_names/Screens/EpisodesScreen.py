@@ -216,6 +216,9 @@ class EpisodeScreen(Screen):
             return
         proj = Project.as_Playlist_by_uid(self.current_project)
         epis = Episode.by_project(self.current_project, 'asc')
+        if not epis:
+            self.app.notify(i18n['Project does not contain episodes'])
+            return
         path_file = f"{proj.title}.md"
         with open(path_file, "w") as md_file:
             md_file.write(f"# {proj.title}\n\n")
@@ -358,7 +361,7 @@ class EpisodeScreen(Screen):
         self.entryview.clear(columns=True)
         self.entryview.show_header = True
         self.current_project = p_uid  # even for empty sets the project ID is still set
-        data_ep = Episode.by_project(p_uid, order="desc")
+        data_ep: list[Folge] | None = Episode.by_project(p_uid, order="desc")
         # display dummy text if none is present
         if not data_ep:
             self.entryview.show_header = False
@@ -374,14 +377,24 @@ class EpisodeScreen(Screen):
         self.entryview.add_column(i18n['Notes'], key='notes')
         self.entryview.add_column(i18n['Template'])
         # TODO: concat template name into episode # * I dont know what I meant
-        note_row = Text('N', style="italic", justify="center")
         no_template = Text(i18n['No Template'], style="bold #FF0000")
+        qa = self.app.theme_variables # short handler (=quick access) for theme accurate colors
         for each in data_ep:
+            note_row = Text('', justify="center")
             template = each.db_template
             if each.joined_template_title:
                 template = each.joined_template_title
             if template == 0:
                 template = no_template
+            # Notes - Note, Desc Addon, Description & YT Link
+            if each.notes:
+                note_row+= Text('N', style=f"italic {qa['foreground']}", justify="center")
+            if each.description:
+                note_row+= Text('D', justify="center", style=f"bold {qa['text-primary']}")
+            if each.desc_addon:
+                note_row+= Text('A', justify="center", style=f"{qa['text-success']}")
+            if each.yt_link:
+                note_row += Text('Y', justify="center", style=f"underline {qa['text-accent']}")
             self.entryview.add_row(
                 *[
                     each.counter1,
@@ -389,7 +402,7 @@ class EpisodeScreen(Screen):
                     each.session,
                     each.recording_date.strftime("%d.%m.%Y"),
                     each.title,
-                    note_row if each.notes else '',
+                    note_row,
                     template,
                 ],
                 key=each.db_uid
@@ -397,7 +410,7 @@ class EpisodeScreen(Screen):
         # hide counter2 row when there are now values in there
         if not Project.has_counter2(self.current_project):
             self.entryview.remove_column("counter2")  # the only column with a key as of now
-        if not Project.has_notes(self.current_project):
+        if not Project.has_additional_short_identifier(self.current_project):
             self.entryview.remove_column('notes')
         # highlight the previos cell, I have the sneaking suspicion that this will break somewhen
         if was_selected and was_selected.value:
