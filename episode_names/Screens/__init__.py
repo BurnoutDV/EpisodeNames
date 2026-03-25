@@ -1,4 +1,5 @@
 from episode_names.Screens.EpisodesScreen import EpisodeScreen
 from episode_names.Screens.TemplateScreen import TemplateScreen
 from episode_names.Screens.SettingsScreen import SettingsScreen
+from episode_names.Screens.LinkingScreen import LinkingScreen
 from episode_names.Screens.TemplateByText import ModularInterface

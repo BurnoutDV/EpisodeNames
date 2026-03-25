@@ -1,0 +1,70 @@
+CreateEditProject {
+    align: center middle;
+    background: $background 80%;
+
+    Vertical {
+        height: 80%;
+        width: 80%;
+    }
+
+    ScrollableContainer {
+        min-height: 20;
+        min-width: 50;
+    }
+
+    Input {
+        border: none;
+        border-left: outer $accent;
+        height: 1;
+        max-height: 1;
+        &:focus {
+          border-left: thick $accent-lighten-3;
+          background: $background-lighten-3;
+      }
+    }
+
+    #title { background: $background-lighten-1; }
+    #category { background: $background-lighten-2; }
+
+    AutoComplete {
+        height: 1;
+        &:focus {
+          border-left: inner $accent;
+          background: $background-lighten-3;
+      }
+      Input {
+        background: $background-lighten-2;
+      }
+    }
+
+    Button {
+        border: vkey $accent;
+        height: 3;
+        padding: 0 1;
+        text-style: bold;
+    }
+
+    Checkbox {
+        border: panel red;
+        height: 4;
+        padding-top: 1;
+        margin: 1;
+        background: $background-lighten-1;
+
+        Button {
+            background: red;
+        }
+    }
+
+    TextArea {
+        border: none;
+        border-left: outer $accent;
+        padding: 0 0;
+        min-height: 7;
+        background: $background-lighten-1;
+        &:focus {
+          border-left: thick $accent-lighten-3;
+          background: $background-lighten-3;
+      }
+    }
+}

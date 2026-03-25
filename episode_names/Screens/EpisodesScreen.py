@@ -30,6 +30,7 @@ from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, MarkdownViewer, TextArea
 from textual.screen import Screen
 
+from episode_names.__init__ import __default_dateformat__, __default_datetimeformat__
 from episode_names.Utility import i18n
 from episode_names.Utility.custom_widgets import EnPageMarker
 from episode_names.Utility.db import Project, Playlist, Episode, Settings, Folge, TextTemplate, PatternTemplate
@@ -37,18 +38,24 @@ from episode_names.Utility.order import new_episode, create_description_text
 from episode_names.Modals import CreateEditProject, AssignTemplate, CreateEditEpisode, WriteNoteModal
 
 class EpisodeScreen(Screen):
+    entry_group = Binding.Group(i18n['Entry Group'])
+    copy_group = Binding.Group(i18n['CopyPaste Group'])
+    notes_group = Binding.Group(i18n['Notes Group'])
     BINDINGS = [
-        Binding(key="d", action="new_entry", description=i18n['New Entry']),
-        Binding(key="e", action="edit_entry", description=i18n['Edit Entry']),
-        Binding(key="a", action="assign_template", description=i18n['Assign Template']),
-        Binding(key="q", action="copy_text", description=i18n['Copy Text']),
-        Binding(key="t", action="copy_tags", description=i18n['Copy Tags']),
+        # todo: tooltips
+        Binding(key="d", action="new_entry", description=i18n['New Entry'], group=entry_group, tooltip=i18n['New Entry Tooltip']),
+        Binding(key="enter, e", action="edit_entry", description=i18n['Edit Entry'], priority=True, group=entry_group, tooltip=i18n['Edit Entry Tooltip']),
+        Binding(key="a", action="assign_template", description=i18n['Assign Template'], group=entry_group, tooltip=i18n['Assign Template Tooltip']),
+        Binding(key="q", action="copy_text", description=i18n['Copy Text'], group=copy_group, tooltip=i18n['Copy Text Tooltip']),
+        Binding(key="w", action="copy_text_md", description=i18n['Copy2MD'], group=copy_group, tooltip=i18n['Copy Text MD Tooltip']),
+        Binding(key="t", action="copy_tags", description=i18n['Copy Tags'], group=copy_group, tooltip=i18n['Copy Tags Tooltip']),
         Binding(key="k", action="create_project_menu", description=i18n['Create Project']),
         Binding(key="l", action="edit_project_menu", description=i18n['Edit current Project']),
         Binding(key="ctrl+p", action="create_md", description=i18n['Create MD']),
-        Binding(key="n", action="open_episode_note", description=i18n['Episode Note']),
-        Binding(key="v", action="open_episode_desc_addon", description=i18n['Description Addon']),
-        Binding(key="ctrl+n", action="open_project_note", description=i18n['Project Note']),
+        Binding(key="n", action="open_episode_note", description=i18n['Episode Note'], group=notes_group, tooltip=i18n['Episode Note Tooltip']),
+        Binding(key="m", action="open_episode_description", description=i18n['Description'], group=notes_group, tooltip=i18n['Description Tooltip']),
+        Binding(key="v", action="open_episode_desc_addon", description=i18n['Description Addon'], group=notes_group, tooltip=i18n['Description Addon Tooltip']),
+        Binding(key="ctrl+n", action="open_project_note", description=i18n['Project Note'], group=notes_group),
     ]
 
     ACTION_FILTER = {
@@ -56,8 +63,10 @@ class EpisodeScreen(Screen):
         "edit_entry": {'widget': "entryview", 'action_type':"entry_not_empty"},
         "assign_template": {'widget': "entryview", 'action_type':"entry_not_empty"},
         "copy_text": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "copy_text_md": {'widget': "entryview", 'action_type':"entry_not_empty"},
         "copy_tags": {'widget': "entryview", 'action_type':"entry_not_empty"},
         "open_episode_note": {'widget': "entryview", 'action_type':"entry_not_empty"},
+        "open_episode_description": {'widget': "entryview", 'action_type': "entry_not_empty"},
         "open_episode_desc_addon": {'widget': "entryview", 'action_type': "entry_not_empty"},
         "create_project_menu": {'widget': "project_tree"},
         "edit_project_menu": {'widget': "project_tree"},
@@ -65,9 +74,14 @@ class EpisodeScreen(Screen):
         "create_md": {'widget': "project_tree"},
     }
 
+    CSS_PATH = "../CSS/EpisodeScreen.tcss"
+
     def __init__(self):
         self.current_project: int | None = None
         self.project_tree = [] # All nodes in project tree
+        self.dateformat = __default_dateformat__
+        self.datetimeformat = __default_datetimeformat__
+        i18n.color_map = self.app.theme_variables
         super().__init__()
 
     def compose(self) -> ComposeResult:#
@@ -92,6 +106,8 @@ class EpisodeScreen(Screen):
         self.projects.show_guides = False
         self.projects.border_title = i18n['Projects']
         self.entryview.border_title = i18n['Episodes']
+        self.write_log("Load Settings")
+        self.dateformat = Settings.save_retrieve_key('dateformat', __default_dateformat__)
         self.write_log("Init Data Tables and Views...")
         self._init_data()
         #self._dummy_data()
@@ -224,7 +240,7 @@ class EpisodeScreen(Screen):
             md_file.write(f"# {proj.title}\n\n")
             md_file.write(f"> {proj.description}\n")
             for each in epis:
-                desc = create_description_text(each)
+                desc = create_description_text(each, self.dateformat)
                 md_file.write(f"## {each.title}\n")
                 md_file.write(f"{desc}\n")
                 md_file.write(f"\n`{each.edit_date}`\n")
@@ -248,22 +264,16 @@ class EpisodeScreen(Screen):
             Episode.update_or_create(this)
             self._refill_table_with_project(self.current_project)
 
-        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
-        if row_key:
-            this = Episode.as_Folge_by_uid(row_key.value)
-            if this:
-                self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
-                return
+        this = self._select_episode_dataview()
+        if this:
+            self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
 
     def _action_copy_tags(self):
         """
         Copies tags of the currently selected episode to the clipboard
         :return: Nothing
         """
-        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
-        if not row_key:
-            return
-        this = Episode.as_Folge_by_uid(row_key.value)
+        this = self._select_episode_dataview()
         if not this:
             return
         that = TextTemplate.as_PTemplate_by_uid(this.db_template)
@@ -277,13 +287,10 @@ class EpisodeScreen(Screen):
         self.app.notify(that.tags, title=i18n['Tags copied to clipboard'])
 
     def _action_copy_text(self):
-        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
-        if not row_key:
-            return
-        this = Episode.as_Folge_by_uid(row_key.value)
+        this = self._select_episode_dataview()
         if not this:
             return
-        text = create_description_text(this)
+        text = create_description_text(this, self.dateformat)
         if not text:
             self.app.notify(f"Cannot create formated text for: \n {str(this)}", title=i18n['No template assigned'])
             return
@@ -294,6 +301,29 @@ class EpisodeScreen(Screen):
         # https://darren.codes/posts/textual-copy-paste/
         # App.copy_to_clipboard(this)
 
+    def action_copy_text_md(self):
+        """
+        Copies the episode in a different, same for the whole user format, in
+        my case, for the backup, easy to read, mark down file I keep on codeberg
+        :return: Nothing
+        """
+        this: Folge = self._select_episode_dataview()
+        if not this:
+            return
+        md_format = """##### %%counter1%%\n\n* Titel: `%%first_line%%`\n\n* Beschreibung:\n\n  ```markdown\n  %%description%%\n  ```\n"""
+        text = create_description_text(this, self.dateformat)
+        parts = text.split("\n")
+        rests = ""
+        for i, each in enumerate(parts):
+            if i == 0:
+                continue
+            rests+= each + "\n"
+        md_format = md_format.replace("%%counter1%%", str(this.counter1))
+        md_format = md_format.replace("%%first_line%%", parts[0])
+        md_format = md_format.replace("%%description%%", rests.strip())
+        pyperclip.copy(md_format)
+        self.app.notify(md_format, title=i18n['Markdown copied to clipboard'])
+
     def _action_assign_template(self):
         def template_callback(cur_episode: Folge or None):
             if not cur_episode:
@@ -301,16 +331,12 @@ class EpisodeScreen(Screen):
             Episode.update_or_create(cur_episode)
             self._refill_table_with_project(self.current_project)
 
-        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
-        if row_key:
-            this = Episode.as_Folge_by_uid(row_key.value)
+        this = self._select_episode_dataview()
+        if this:
             self.app.push_screen(AssignTemplate(this), template_callback)
 
     def _action_open_episode_note(self):
-        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
-        if not row_key:
-            return
-        this = Episode.as_Folge_by_uid(row_key.value)
+        this = self._select_episode_dataview()
         if not this:
             return
 
@@ -324,20 +350,28 @@ class EpisodeScreen(Screen):
         self.app.push_screen(WriteNoteModal(this), note_callback)
 
     def _action_open_episode_desc_addon(self):
-        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
-        if not row_key:
-            return
-        this = Episode.as_Folge_by_uid(row_key.value)
-        if not this:
-            return
-
         def desc_addon_callback(notice: Folge or None):
             if not notice:
                 return
             if not isinstance(notice, Folge): # * hard type check
                 return
             Episode.update_or_create(notice)
+        this = self._select_episode_dataview()
+        if not this:
+            return
         self.app.push_screen(WriteNoteModal(this, option="desc_addon"), desc_addon_callback)
+
+    def _action_open_episode_description(self):
+        def description_callback(notice: Folge or None):
+            if not notice:
+                return
+            if not isinstance(notice, Folge): # * hard type check
+                return
+            Episode.update_or_create(notice)
+        this = self._select_episode_dataview()
+        if not this:
+            return
+        self.app.push_screen(WriteNoteModal(this, option="description"), description_callback)
 
 
     def _refill_table_with_project(self,
@@ -371,14 +405,14 @@ class EpisodeScreen(Screen):
         # ? we build the maximal table and then remove what is superflous
         self.entryview.add_column("#")
         self.entryview.add_column("##", key="counter2")
-        self.entryview.add_column(i18n['Session'])
+        self.entryview.add_column(i18n['Session'], key='session')
         self.entryview.add_column(i18n['Record Date'])
         self.entryview.add_column(i18n['Title'])
         self.entryview.add_column(i18n['Notes'], key='notes')
         self.entryview.add_column(i18n['Template'])
         # TODO: concat template name into episode # * I dont know what I meant
-        no_template = Text(i18n['No Template'], style="bold #FF0000")
         qa = self.app.theme_variables # short handler (=quick access) for theme accurate colors
+        no_template = Text(i18n['No Template'], style=f"bold {qa['foreground']}")
         for each in data_ep:
             note_row = Text('', justify="center")
             template = each.db_template
@@ -407,12 +441,15 @@ class EpisodeScreen(Screen):
                 ],
                 key=each.db_uid
             )
-        # hide counter2 row when there are now values in there
-        if not Project.has_counter2(self.current_project):
-            self.entryview.remove_column("counter2")  # the only column with a key as of now
-        if not Project.has_additional_short_identifier(self.current_project):
-            self.entryview.remove_column('notes')
-        # highlight the previos cell, I have the sneaking suspicion that this will break somewhen
+        # hide columns that contain nothing
+        empty_fields = Project.list_empty_fields_in_project(self.current_project)
+        if empty_fields is not None:
+            if 'session' in empty_fields:
+                self.entryview.remove_column("session")
+            if 'counter2' in empty_fields:
+                self.entryview.remove_column("counter2")
+            if all(k in empty_fields for k in ['notes', 'yt_link', 'description', 'desc_addon']):
+                self.entryview.remove_column('notes')
         if was_selected and was_selected.value:
             new_row = self.entryview.get_row_index(was_selected)
             self.entryview.move_cursor(row=new_row)
@@ -510,6 +547,15 @@ class EpisodeScreen(Screen):
                     self.projects.move_cursor_to_line(i-1)
                     return True
             return False # if none was found
+
+    def _select_episode_dataview(self) -> Folge:
+        row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)
+        if not row_key:
+            return
+        this = Episode.as_Folge_by_uid(row_key.value)
+        if not this:
+            return
+        return this
 
     def _init_data(self):
         """Retrieves data from database in bulk for first build of the view"""

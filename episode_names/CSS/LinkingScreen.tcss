@@ -1,0 +1,48 @@
+LinkingScreen {
+    Tree {
+        width: 30%;
+        max-width: 60;
+        border: none;
+        border-top: outer $panel;
+        border-left: outer $panel;
+        border-right: outer $panel;
+        background: $surface;
+        &:focus {
+            border-left: outer $accent;
+            border-right: outer $accent;
+            background: $surface-lighten-1;
+        }
+    }
+
+    DataTable {
+        border: none;
+        border-left: outer $panel;
+        border-right: outer $panel;
+        background: $surface;
+        &:focus {
+            border-left: outer $accent;
+            border-right: outer $accent;
+            background: $surface-lighten-1;
+
+            }
+        .datatable--header {
+            background: $secondary;
+        }
+
+    }
+
+    #no_go_blocker {
+        position: absolute;
+        align: center middle;
+        background: $error 40%;
+        height: 100%;
+        width: 100%;
+    }
+
+    #md_no_go {
+        width: 70%;
+        height: 70%;
+        border: outer $accent;
+        background: $surface;
+    }
+}

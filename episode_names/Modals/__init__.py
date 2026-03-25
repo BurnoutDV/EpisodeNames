@@ -1,2 +1,5 @@
 from episode_names.Modals.ProjectModals import CreateEditProject
 from episode_names.Modals.EpisodeModals import AssignTemplate, CreateEditEpisode, WriteNoteModal
+from episode_names.Modals.LinkingModals import LinkVideoModal
+from episode_names.Modals.DialogueModals import YesNoBox, ConfirmMessageBox
+from episode_names.Modals.SettingsModal import SelectExport

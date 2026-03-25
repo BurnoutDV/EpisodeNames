@@ -1,0 +1,67 @@
+CreateEditEpisode {
+    align: center middle;
+    background: $background 80%;
+
+    ScrollableContainer {
+        height: auto;
+    }
+
+    Vertical {
+        overflow-y: auto;
+    }
+
+    Horizontal {
+        width: 1fr;
+    }
+
+    Input {
+        border: round $foreground-darken-3;
+        background: transparent;
+        &:focus {
+            border-title-color: $primary;
+            border: round $primary;
+        }
+    }
+    Collapsible {
+        height: auto;
+        margin-left: 1;
+        margin-right: 1;
+        padding-bottom: 1;
+        border: none;
+        border-top: outer $foreground-darken-3;
+        background: $surface-lighten-1;
+
+        &:focus-within {
+            border-top: outer $accent;
+        }
+        TextArea {
+            padding: 0;
+            height: auto;
+            max-height: 10
+        }
+    }
+}
+
+WriteNoteModal {
+    align: center middle;
+    background: $background 80%;
+
+    #wrapper {
+        max-width: 100;
+        max-height: 20;
+        /*border: thick $accent 100%;
+        background: $surface;*/
+    }
+
+    .project_note {
+        max-height: initial !important;
+
+        TextArea {
+            height: 100%;
+        }
+
+        .adjust {
+            height: 5;
+        }
+    }
+}

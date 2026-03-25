@@ -31,6 +31,7 @@ class EnPageMarker(Widget):
     DEFAULT_CSS = """
     EnPageMarker {
         height: 2;
+        dock: top;
         Tabs {
             height: 2;
             background: $footer-background;

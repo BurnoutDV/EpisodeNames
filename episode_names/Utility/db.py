@@ -27,6 +27,7 @@ from peewee import (
     DatabaseProxy,
     DateTimeField,
     DateField,
+    BooleanField,
     ForeignKeyField,
     IntegerField,
     Model,
@@ -39,9 +40,10 @@ from episode_names.__init__ import __folder_version__
 database_proxy = DatabaseProxy()
 
 # TODO: find a better place for this
-def normalize_datetime(in_date: str | datetime | None = None) -> datetime | None:
+def normalize_datetime(in_date: str | datetime | None = None, default_on_now: bool = False) -> datetime | None:
     """
     Normalizes a given date which is either isoformat string or nothing which then becomes now
+    :param default_on_now: if iso format goes wrong, it now is used if this is **True**
     :param in_date: nothing -> now(), str must be isoformat
     :return: a proper datetime or None
     """
@@ -50,6 +52,8 @@ def normalize_datetime(in_date: str | datetime | None = None) -> datetime | None
     if isinstance(in_date, str):  # quite sure this does nothing in terms of sqlite
         in_date = datetime.fromisoformat(in_date)
     if not isinstance(in_date, datetime):
+        if default_on_now:
+            return datetime.now()
         return None
     return in_date
 
@@ -59,6 +63,7 @@ class Folge:
     joined_template_title: str | None = None  # this feels not right
     counter1: int = 1
     counter2: int = 0
+    extra_counter: str | None = None #mostly chars like 'b' for 64b
     session: str = ""
     description: str = ""
     desc_addon: str = ""
@@ -66,16 +71,14 @@ class Folge:
     recording_date: date = date.today()
 
     # * Youtube Connection (or any other video site I guess?)
-    yt_link: str | None = None
-    yt_title: str | None = None
-    yt_desc: str | None = None
-    yt_last_link: date | None = None
+    yt_link: str | None = None # TODO make this its own database
+    yt_human_touch: bool | None = None
 
     db_uid: int = 0  # objects can exist without db connection
     db_project: int = 0
     db_template: int = 0
-    edit_date: datetime | None = None
-    create_date: datetime | None = None
+    edit_date: datetime | None = datetime.now()
+    create_date: datetime | None = datetime.now()
 
     def __str__(self):
         if self.counter2 > 0:
@@ -94,14 +97,13 @@ class Folge:
             joined_template_title=template_title,
             counter1=this.counter1,
             counter2=this.counter2,
+            extra_counter=this.extra_counter,
             session=this.session,
             description=this.description,
             desc_addon=this.desc_addon,
             notes=this.notes,
             yt_link=this.yt_link,
-            yt_title=this.yt_title,
-            yt_desc=this.yt_desc,
-            yt_last_link=this.yt_last_link,
+            yt_human_touch=this.yt_human_touch,
             recording_date=this.record_date,
             db_uid=this.id,
             db_project=this.project_id,
@@ -119,9 +121,7 @@ class Playlist:
     notes: str | None = None
     # * Youtube Connection (or any other video site I guess?)
     yt_link: str | None = None
-    yt_title: str | None = None
-    yt_desc: str | None = None
-    yt_last_link: date | None = None
+    yt_human_touch: bool | None = None
 
     db_uid: int = 0
     opt_newest_episode: datetime | None = None # additional data for tree view
@@ -138,9 +138,7 @@ class Playlist:
             description=this.description,
             notes=this.notes,
             yt_link=this.yt_link,
-            yt_title=this.yt_title,
-            yt_desc=this.yt_desc,
-            yt_last_link=this.yt_last_link,
+            yt_human_touch=this.yt_human_touch,
             opt_newest_episode=newest,
             db_uid=this.id
         )
@@ -193,6 +191,64 @@ class PatternTemplate:
             description_addon_suffix=this.description_addon_suffix
         )
 
+@dataclass
+class YtVideo:
+    """
+    Technically a Youtube Video that is part of a playlist if this is properly hydrated
+    """
+    yt_id: str
+    title: str
+    description: str = ""
+    views: int | None = None
+    upload_date: datetime | None = None
+    publish_date: datetime | None = None
+    last_update: datetime | None = None
+    last_full_update: datetime | None = None
+    template_id: int | None = None
+    playlist: str | None = None
+    pl_pos: int | None = None
+
+    edit_date: datetime | None = datetime.now()
+    create_date: datetime | None = datetime.now()
+
+    @staticmethod
+    def from_yt_db_vid(this: 'YtDbVid') -> 'YtVideo':
+        return YtVideo(yt_id=this.yt_id,# linter complaints, but this works automagically
+                       title=this.title,
+                       description=this.description,
+                       views=this.views,
+                       upload_date=this.upload_date,
+                       publish_date=this.publish_date,
+                       last_update=this.last_update,
+                       last_full_update=this.last_full_update,
+                       template_id=this.template_id,
+                       edit_date=this.edit_date,
+                       create_date=this.create_date)
+
+@dataclass
+class YtPlaylist:
+    yt_id: str
+    title: str
+    description: str = ""
+    template_id: int | None = None
+    template_title: str | None = None
+    publish_date: datetime | None = None
+    last_update: datetime | None = None
+    entries: int = 0
+
+    @staticmethod
+    def from_yt_db_play(this: 'YtDbPlay') -> 'YtPlaylist':
+        return YtPlaylist(
+            yt_id=this.yt_id,
+            title=this.title,
+            description=this.description,
+            template_id=this.template_id,
+            template_title=None, # TODO handle this properly
+            publish_date=this.publish_date,
+            last_update=this.edit_date,
+            entries=this.entries
+        )
+
 class BaseModel(Model):
     class Meta:
         database = database_proxy
@@ -204,9 +260,7 @@ class Project(BaseModel):
     notes = TextField(default="", null=True)
 
     yt_link = CharField(null=True)
-    yt_title = CharField(null=True, max_length=160)
-    yt_desc = TextField(null=True)
-    yt_last_link = DateTimeField(null=True)
+    yt_human_touch = BooleanField(default=False, null=True)
 
     edit_date = DateTimeField(default=datetime.now)
     create_date = DateTimeField(default=datetime.now)
@@ -302,9 +356,7 @@ class Project(BaseModel):
                 description=this.description,
                 notes=this.notes,
                 yt_link=this.yt_link,
-                yt_title=this.yt_title,
-                yt_desc=this.yt_desc,
-                yt_last_link=this.yt_last_link,
+                yt_human_touch=this.yt_human_touch,
                 )
                .execute())
         return res
@@ -315,9 +367,7 @@ class Project(BaseModel):
                    description: str = "",
                    notes: str | None = None,
                    yt_link: str | None = None,
-                   yt_title: str | None = None,
-                   yt_desc: str | None = None,
-                   yt_last_link: datetime | None = None,
+                   yt_human_touch: bool | None = None,
                    edit_date: datetime | str | None = None,
                    create_date: datetime | str | None = None) -> int:
         """
@@ -327,9 +377,7 @@ class Project(BaseModel):
 
         :param str notes: Project Notes
         :param str yt_link: YouTube url part, e.g. pxdL8y-0eH0
-        :param str yt_title: the actual title online
-        :param str yt_desc: the online description
-        :param datetime yt_last_link: date of last connection to the internet
+        :param bool yt_human_touch: whether the link was actually approved by someone
         :param title: the title of the project, can not be empty
         :param category: category to be sorted through, defaults to 'default'
         :param description: description, can be empty
@@ -345,9 +393,7 @@ class Project(BaseModel):
                 description = description,
                 notes=notes,
                 yt_link=yt_link,
-                yt_title=yt_title,
-                yt_desc=yt_desc,
-                yt_last_link=yt_last_link,
+                yt_human_touch=yt_human_touch,
                 edit_date = edit_date,
                 create_date = create_date
             ).execute())
@@ -359,6 +405,13 @@ class Project(BaseModel):
         Checks if the given project has any episodes with counter2, should
         always return true or false, even if the project doesn't exists, because
         logically, then the number of entries is zero.
+
+        I wrote this and some other functions to then realise that I got tired so
+        now *list_empty_fields_in_project* exists that basically does this in one
+        go, I havent measure performance, in Theory and big Big **BIG** Databases
+        it should be faster to do in directly in the database but apart from that,
+        *list_empty_fields_in_project* seems to be the easier way to make this more
+        ... *agile* or *lean*
 
         :param project_id: id of the project
         :return bool: true if there are any entries, otherwise false
@@ -374,49 +427,30 @@ class Project(BaseModel):
             return None
 
     @staticmethod
-    def has_notes(project_id: int) -> bool | None:
+    def list_empty_fields_in_project(project_id: int) -> list | None:
         """
-        Checks if the given projects has any episodes with notes in
-        them, this is a boilerplate of the counter2 thing which
-        begs the question if there is a better solution
+        Checks if the given project has fields in the assigned Episodes that
+        are consistently empty, useful if you want to not clutter your interface
+        with columns of unneeded information. The possible fields are unfortunately
+        hardcoded as I couldn't be bothered with reading the docs to properly extract
+        the correct database fields from the class definition
 
-        :param project_id: id of the project
-        :return bool: true if there are any entries, otherwise false
+        :param project_id: database uid of the project you are interested in
+        :return: either None if something goes wrong or a list of empty fields.
+        **IMPORTANT** an *empty* list is also **not** if you check for it, remember
+        to properly check for `if res is not Null:` instead of `if res:`
         """
+        fields = ['title', 'counter1', 'counter2', 'extra_counter', 'desc_addon', 'description', 'notes', 'session', 'yt_link']
         try:
-            res = (Episode
-                   .select(Episode.id)
-                   .where(Episode.project_id == project_id)
-                   .where(Episode.notes != '')
-                   .limit(1))
-            return bool(res.count())
+            res : list[Episode] = Episode.select().where(Episode.project_id == project_id)
+            for each in res:
+                for field in fields:
+                    if each.__getattribute__(field): # ? so, not Null, not '' or not 0
+                        fields.remove(field)
+                        continue
+            return fields
         except Episode.DoesNotExist:  # this should never happen
             return None
-
-    @staticmethod
-    def has_additional_short_identifier(project_id: int) -> bool | None:
-        """
-        Checks if the given projects has any episodes with **notes**, **description**
-        **desc_addon** or **yt_link** in it
-        *This is a boilerplate of the counter2 thing which
-        begs the question if there is a better solution*
-
-        :param project_id: id of the project
-        :return bool: true if there are any entries, otherwise false
-        """
-        try:
-            res = (Episode
-                   .select(Episode.id)
-                   .where(Episode.project_id == project_id)
-                   .where((Episode.notes != '') |
-                          (Episode.description != '') |
-                          (Episode.desc_addon != '') |
-                          (Episode.yt_link != ''))
-                   .limit(1))
-            return bool(res.count())
-        except Episode.DoesNotExist:  # this should never happen
-            return None
-
     @staticmethod
     def get_tree_as_playlist() -> list[Playlist] | None:
         """
@@ -584,16 +618,15 @@ class TextTemplate(BaseModel):
 class Episode(BaseModel):
     title = CharField()
     counter1 = IntegerField(null=False)
-    counter2 = IntegerField(default=0, null=False, constraints=[SQL('DEFAULT 0')])
+    counter2 = IntegerField(default=None, null=True)
+    extra_counter = CharField(null=True)
     record_date = DateField()
     session = CharField(default='', null=True)
     description = TextField(default='', null=True)
     desc_addon = TextField(default='', null=True)
     notes = TextField(null=True)
     yt_link = CharField(null=True)
-    yt_title = CharField(null=True, max_length=160)
-    yt_desc = TextField(null=True)
-    yt_last_link = DateTimeField(null=True)
+    yt_human_touch = BooleanField(default=False, null=True)
 
     template = ForeignKeyField(TextTemplate, lazy_load=True)
     project = ForeignKeyField(Project, lazy_load=True)
@@ -661,15 +694,14 @@ class Episode(BaseModel):
                 title=this.title,
                 counter1=this.counter1,
                 counter2=this.counter2,
+                extra_counter=this.extra_counter,
                 record_date=this.recording_date,
                 session=this.session,
                 description=this.description,
                 desc_addon=this.desc_addon,
                 notes=this.notes,
                 yt_link=this.yt_link,
-                yt_title=this.yt_title,
-                yt_desc=this.yt_desc,
-                yt_last_link=this.yt_last_link,
+                yt_human_touch=this.yt_human_touch,
                 template_id=this.db_template,
                 project_id=this.db_project,
                 edit_date=datetime.now()
@@ -688,21 +720,20 @@ class Episode(BaseModel):
         :param Folge this:
         :return:
         """
-        if not this.notes:
+        if not this.notes: # ? why?
             this.notes = None
         res = (Episode.insert(
             title=this.title,
             counter1=this.counter1,
             counter2=this.counter2,
+            extra_counter=this.extra_counter,
             record_date=this.recording_date,
             session=this.session,
             description=this.description,
             desc_addon=this.desc_addon,
             notes=this.notes,
             yt_link=this.yt_link,
-            yt_title=this.yt_title,
-            yt_desc=this.yt_desc,
-            yt_last_link=this.yt_last_link,
+            yt_human_touch=this.yt_human_touch,
             template_id=this.db_template,
             project_id=this.db_project
         ).execute())
@@ -713,15 +744,14 @@ class Episode(BaseModel):
                    project_id: int,
                    counter1: int = 1,
                    counter2: int | None = 0,
+                   extra_counter: str | None = None,
                    record_date: str | None = None,
                    session: str = "",
                    description: str = "",
                    desc_addon: str = "",
                    notes: str | None = None,
                    yt_link: str | None = None,
-                   yt_title: str | None = None,
-                   yt_desc: str | None = None,
-                   yt_last_link: date | None = None,
+                   yt_human_touch: bool | None = None,
                    template_id: int | None = None,
                    edit_date: datetime | str | None = None,
                    create_date: datetime | str | None = None) -> int:
@@ -733,15 +763,14 @@ class Episode(BaseModel):
         :param int project_id: assigned project by id
         :param int counter1: first counter
         :param int counter2: second counter, both should auto-increment
+        :param str extra_counter: additional character for counter, like '64**b**'
         :param str record_date: date of recording of this video, not an actual datetime
         :param str session: free text, Session information
         :param str description: pure text description without compiled data
         :param str desc_addon: additional description stuff like timestamps
         :param str notes: Episode Notes
         :param str yt_link: YouTube url part, e.g. pxdL8y-0eH0
-        :param str yt_title: the actual title online
-        :param str yt_desc: the online description, including all compiled data
-        :param datetime yt_last_link: date of last connection to the internet
+        :param bool yt_human_touch: whether the link was actually approved by someone
         :param int template_id: assigned template for text generation
         :param datetime edit_date: datetime of last edit
         :param datetime create_date: datetime of the original creation
@@ -754,15 +783,14 @@ class Episode(BaseModel):
             title=title,
             counter1=counter1,
             counter2=counter2,
+            extra_counter=extra_counter,
             record_date=record_date,
             session=session,
             description=description,
             desc_addon=desc_addon,
             notes=notes,
             yt_link=yt_link,
-            yt_title=yt_title,
-            yt_desc=yt_desc,
-            yt_last_link=yt_last_link,
+            yt_human_touch=yt_human_touch,
             template_id=template_id,
             project_id=project_id,
             edit_date=edit_date,
@@ -785,7 +813,7 @@ class Settings(BaseModel):
         )
 
     @staticmethod
-    def save_retrieve_key(this_key: str) -> str | None:
+    def save_retrieve_key(this_key: str, default=None) -> str | None:
         try:
             res = (Settings
              .select()
@@ -794,7 +822,297 @@ class Settings(BaseModel):
              .get())
             return res.value
         except Settings.DoesNotExist:
+            if not default:
+                return None
+            return default
+
+    @staticmethod
+    def get_keys(keys: list[str], error_fallback: bool = True) -> dict[str: str] | None:
+        """
+        Retrieves multiple keys at once
+        :param keys: list of settings keys to be retrieved
+        :param error_fallback: if False will return None if **any** of the keys doesn't exist
+            but won't return partial lists either
+        :return: either a dictionary key: value with the keys or None
+        """
+        try:
+            res = (Settings
+                   .select(Settings.key, Settings.value)
+                   .where(Settings.key << keys))
+            response = {}
+            for item in res:
+                response[item.key] = item.value
+                keys.remove(item.key)
+            if keys and not error_fallback: # something left in keys
+                return None
+            return response
+        except Settings.DoesNotExist:
             return None
+
+# ! Youtube Stuff - Walls of Text ahead to explain the mess
+""" 2026-03-18
+So, I think I have to write this in prose to make my thoughts a bit more clear
+and less opaque. There is a rate limit on requesting stuff from youtube, also
+I envisioned this tool as something that works without internet in a situation
+like a train. So I cache everything and act as if for every request we have to
+send an expedition to the holy data vaults on the other side of the tundra. 
+Paranoid, I know. Anyway, initially I thought my special use case only needs 
+videos that reside in a playlist, and that is mostly true, episode_names works
+for episodic stuff that has an amount of repeating features, but then it occured
+me that my own channel has multiple playlist with the same videos in it, its mostly
+stuff like DLCs getting their own playlist for visibility while the original 
+main game still got the DLC content in the order of recording.
+Therefore, 3 tables, one for the playlist, another for videos so we dont have
+redundancy and then a third table that contains just the order of each playlists 
+videos. Holding this all in my head creates an headache tbh.
+"""
+
+class YtDbPlay(BaseModel): # ? this name is hell
+    yt_id = CharField(max_length=36, primary_key=True) # actually its 34
+    template = ForeignKeyField(TextTemplate, lazy_load=True, null=True)
+    title = CharField(max_length=150)
+    description = TextField(null=True)
+    entries = IntegerField()
+
+    publish_date = DateTimeField(null=True)
+    edit_date = DateTimeField(default=datetime.now)
+    create_date = DateTimeField(default=datetime.now)
+
+    @staticmethod
+    def get_all_from_db() -> list['YtPlaylist'] | None:
+        try:
+            res = (YtDbPlay.select())
+            flood = []
+            for each in res:
+                flood.append(YtPlaylist.from_yt_db_play(each))
+            return flood
+        except YtDbPlay.DoesNotExist:
+            return None
+
+    @staticmethod
+    def assign_videos(playlist_id: str, vids: list[YtVideo]) -> bool:
+        # purge numbering for this playlist
+        YtDbNumbering.delete().where(YtDbNumbering.playlist_id == playlist_id)
+        for each in vids:
+            YtDbVid.update_or_create(each)
+            # create connection
+            YtDbNumbering.insert(
+                playlist_id=playlist_id,
+                video_id=each.yt_id,
+                position=each.pl_pos
+            ).execute()
+        return True
+
+    @staticmethod
+    def get_playlist_videos(playlist_id: str) -> list[YtVideo] | None :
+        try:
+            res = (YtDbNumbering
+                   .select(YtDbNumbering.video, YtDbNumbering.position)
+                   .join(YtDbVid, JOIN.LEFT_OUTER)
+                   .where(YtDbNumbering.playlist_id == playlist_id)
+                   .order_by(YtDbNumbering.position))
+            if not res:
+                return None
+            hydrated_videos = []
+            for each in res:
+                one = YtVideo.from_yt_db_vid(each.video)
+                one.playlist=playlist_id
+                one.pl_pos = each.position
+                hydrated_videos.append(one)
+            return hydrated_videos
+        except YtDbPlay.DoesNotExist:
+            return None
+
+    @staticmethod
+    def update_or_create(this: YtPlaylist) -> str:
+        res = (YtDbPlay.insert(
+            yt_id=this.yt_id,
+            title=this.title,
+            description=this.description,
+            entries=this.entries,
+            publish_date=this.publish_date,
+            template_id=this.template_id,
+            edit_date=datetime.now(),
+            create_date=datetime.now(),
+        ).on_conflict(
+            conflict_target=(YtDbPlay.yt_id,),
+            preserve=(YtDbPlay.create_date),
+            update={
+                YtDbPlay.title: this.title,
+                YtDbPlay.description: this.description,
+                YtDbPlay.entries: this.entries,
+                YtDbPlay.publish_date: this.publish_date,
+                YtDbPlay.template_id: this.template_id,
+                YtDbPlay.edit_date: datetime.now(),
+            }
+        ).execute())
+        return res
+
+    @staticmethod
+    def update_or_create_raw(yt_id: str,
+                             title: str,
+                             description: str | None = None,
+                             entries: int = 0,
+                             template_id: int | None = None,
+                             publish_date: str | datetime | None = None,
+                             edit_date: str | datetime | None = None,
+                             create_date: str | datetime | None = None) -> str:
+        # ! as only function this can, if no entry exists, fuck around with edit/create date
+        res = (YtDbPlay.insert(
+            yt_id=yt_id,
+            title=title,
+            description=description,
+            entries=entries,
+            publish_date=publish_date,
+            template_id=template_id,
+            edit_date=normalize_datetime(edit_date, True),
+            create_date=normalize_datetime(create_date, True),
+        ).on_conflict(
+            conflict_target=(YtDbPlay.yt_id,),
+            preserve=(YtDbPlay.create_date,YtDbPlay.template),
+            update={
+                YtDbPlay.title: title,
+                YtDbPlay.description: description,
+                YtDbPlay.entries: entries,
+                YtDbPlay.publish_date: normalize_datetime(publish_date),
+                YtDbPlay.edit_date: datetime.now(),
+            }
+        ).execute())
+        return res
+
+"""
+I was considering just making on big table called "YtRessource" and combine 
+playlists and videos and just distinguish them with one more field but in the 
+end I decided to not be lazy and wrote two seperate tables, although I am 
+not sure if it wouldnt have been easier, more headache, shore, but in the 
+end less duplicated text that has to be taken care of in other places like
+the export things. 
+"""
+class YtDbVid(BaseModel):
+    yt_id = CharField(max_length=12, primary_key=True) # its 11 actually?
+
+    title = CharField(max_length=100)
+    description = TextField(null=True)
+    views = IntegerField(null=True)
+    upload_date = DateTimeField(null=True)
+    publish_date = DateTimeField(null=True)
+
+    template = ForeignKeyField(TextTemplate, lazy_load=True) # overwrites playlist template
+
+    last_update = DateTimeField(null=True) # general update, like from playlistItems
+    last_full_update = DateTimeField(null=True) # when extra video data was retrieved
+
+    edit_date = DateTimeField(default=datetime.now)
+    create_date = DateTimeField(default=datetime.now)
+
+    # ? boilerplate functions because I insist of using DTOs
+    # I wrote these all by hand btw..no llms involved
+    # * the methods are slightly different because the primary key is external
+
+    @staticmethod
+    def update_or_create(this: YtVideo) -> str:
+        res = (YtDbVid.insert(
+            yt_id=this.yt_id,
+            title=this.title,
+            description=this.description,
+            views=this.views,
+            upload_date=this.upload_date,
+            publish_date=this.publish_date,
+            template_id=this.template_id,
+            last_update=this.last_update,
+            last_full_update=this.last_full_update,
+            edit_date=datetime.now(),
+            create_date=datetime.now(),
+        ).on_conflict(
+            conflict_target=(YtDbVid.yt_id,),
+            preserve=(YtDbVid.create_date),
+            update={
+                YtDbVid.title: this.title,
+                YtDbVid.description: this.description,
+                YtDbVid.views: this.views,
+                YtDbVid.upload_date: this.upload_date,
+                YtDbVid.publish_date: this.publish_date,
+                YtDbVid.template_id: this.template_id,
+                YtDbVid.last_update: this.last_update,
+                YtDbVid.last_full_update: this.last_full_update,
+                YtDbVid.edit_date: datetime.now(),
+            }
+        ).execute())
+        return res
+
+    @staticmethod
+    def create_or_update_raw(yt_id: str,
+                   title: str,
+                   description: str | None = None,
+                   views: int | None = None,
+                   upload_date: str | datetime | None = None,
+                   publish_date: str | datetime | None = None,
+                   template_id: int | None = None,
+                   last_update: str | datetime | None = None,
+                   last_full_update: str | datetime | None = None,
+                   edit_date: str | datetime | None = None,
+                   create_date: str | datetime | None = None) -> str:
+        """
+
+        :param yt_id: actual id on youtube.com
+        :param title: title, mandatory
+        :param description: description
+        :param views: amount of views, might be null
+        :param upload_date: upload day of the video
+        :param publish_date: day the video was actually published
+        :param template_id: textemplate for reverse operations
+        :param last_update: last fetch from the internet
+        :param last_full_update: last full fetch as video ressource
+        :param edit_date: internal db operations, self explanatory
+        :param create_date: internal db operations date
+        :return:
+        """
+        res = (YtDbVid.insert(
+            yt_id = yt_id,
+            title = title,
+            description = description,
+            views = views,
+            upload_date = normalize_datetime(upload_date),
+            publish_date = normalize_datetime(publish_date),
+            template_id = template_id,
+            last_update = normalize_datetime(last_update),
+            last_full_update = normalize_datetime(last_full_update),
+            edit_date = normalize_datetime(edit_date, True),
+            create_date = normalize_datetime(create_date, True)
+        ).on_conflict(
+            conflict_target=(YtDbVid.yt_id,),
+            preserve=(YtDbVid.create_date, YtDbVid.template),
+            update={
+                YtDbVid.title: title,
+                YtDbVid.description: description,
+                YtDbVid.views: views,
+                YtDbVid.upload_date: normalize_datetime(upload_date),
+                YtDbVid.publish_date: normalize_datetime(publish_date),
+                YtDbVid.last_update: normalize_datetime(last_update),
+                YtDbVid.last_full_update: normalize_datetime(last_full_update),
+                YtDbVid.edit_date: datetime.now(),
+            }
+        ).execute())
+        return res
+
+class YtDbNumbering(BaseModel):
+    playlist = ForeignKeyField(YtDbPlay, lazy_load=True)
+    video = ForeignKeyField(YtDbVid, lazy_load=True)
+    position = IntegerField()
+
+    @staticmethod
+    def update_or_create(playlist_id: str, video_id: str, position: int):
+        res = (YtDbPlay.insert(
+            playlist_id=playlist_id,
+            video_id=video_id,
+            position=position
+        ).on_conflict(
+            conflict_target=(YtDbNumbering.playlist_id,YtDbNumbering.video_id),
+            update={
+                YtDbNumbering.position: position,
+            }
+        ).execute())
+        return res
 
 def init_db(db_path="episoden_names.db",  creation=False):
     """
@@ -811,9 +1129,10 @@ def init_db(db_path="episoden_names.db",  creation=False):
 
     db.connect()
     if creation:
-        db.create_tables([Episode, Project, TextTemplate, Settings])
+        db.create_tables([Episode, Project, TextTemplate, Settings,
+                          YtDbPlay, YtDbVid, YtDbNumbering])
         Project.create_raw("Default Project")
-        (Settings
+        (Settings # is that a global variable? how do it even have that here?
             .insert(key='db_version', value=__folder_version__)
             .on_conflict(
                 conflict_target=Settings.key,

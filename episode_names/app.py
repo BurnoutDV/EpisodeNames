@@ -31,7 +31,7 @@ from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Modals.DialogueModals import YesNoBox, ConfirmMessageBox
-from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen, ModularInterface
+from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen, ModularInterface, LinkingScreen
 from episode_names.Utility import MenuProvider, i18n, user_setup
 from episode_names.Utility.db import Settings
 from episode_names.Utility.db_aux_utility import previous_versions
@@ -94,7 +94,7 @@ class DebugLog(ModalScreen[bool]):
 
 
 class EpisodeNames(App):
-    CSS_PATH = 'app_design.tcss'
+    CSS_PATH = 'CSS/general.tcss'
     COMMANDS = {MenuProvider}
     COMMAND_PALETTE_BINDING = "circumflex_accent"
 
@@ -102,8 +102,9 @@ class EpisodeNames(App):
         Binding(key="escape", action="quit_dial", description=i18n['Quit'], show=False),
         Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode'], show=False),
         Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates'], show=False),
-        Binding(key="f3", action="switch_mode('settings')", description=i18n['Settings'], show=False),
+        Binding(key="f3", action="switch_mode('linking')", description=i18n['Linking'], show=False),
         Binding(key="f6", action="switch_mode('modular')", description=i18n['Modular'], show=False),
+        Binding(key="f7", action="switch_mode('settings')", description=i18n['Settings'], show=False),
         Binding(key="f8", action="open_debug", description="Debug", show=False),
     ]
 
@@ -111,6 +112,7 @@ class EpisodeNames(App):
         "episodes": EpisodeScreen,
         "templates": TemplateScreen,
         "settings": SettingsScreen,
+        "linking": LinkingScreen,
         "modular": ModularInterface
         #"help": HelpScreen,
     }
@@ -181,7 +183,12 @@ class EpisodeNames(App):
         :return:
         """
         # ? currently: Theme Variables:
-        self.write_raw_log(self.app.theme_variables)
+        #self.write_raw_log(self.app.theme_variables)
+        # ? test settings
+        #self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"]))
+        #self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"], False))
+        # ? i18n tests
+        self.write_raw_log(i18n.color_map)
 
     def _action_open_debug(self):
         if self.debug_open:

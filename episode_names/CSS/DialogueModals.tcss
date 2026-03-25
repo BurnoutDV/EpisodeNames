@@ -1,0 +1,39 @@
+ConfirmMessageBox {
+    align: right middle;
+    background: $error 30%;
+    Vertical {
+        width: 60%;
+        height: 80%;
+        margin-right: 5;
+        border: ascii $accent;
+        background: $panel;
+    }
+    MarkdownViewer {
+        margin-left: 1;
+        padding: 0;
+    }
+    Checkbox {
+        margin: 1;
+        height: 3;
+    }
+
+    .buttons {
+        height: 5;
+    }
+}
+
+YesNoBox {
+    align: center middle;
+    background: $error 60%;
+
+    Vertical {
+        height: 8;
+        width: 50;
+        background: $panel;
+        border: outer $accent 70%;
+    }
+
+    Label {
+        align: center middle;
+    }
+}

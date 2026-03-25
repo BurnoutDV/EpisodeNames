@@ -21,11 +21,6 @@
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
 from datetime import datetime, date
-import time
-from select import select
-from typing import Iterable, Literal
-
-import pyperclip
 
 from textual import on
 from textual.app import ComposeResult
@@ -35,7 +30,7 @@ from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Selec
 from textual.widgets.option_list import Option
 from textual.screen import ModalScreen
 
-from episode_names.Utility import i18n
+from episode_names.Utility import i18n, wlen
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):
@@ -43,6 +38,8 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         Binding(key="ctrl+s, enter", action="save", description=i18n['Save']),
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
+
+    # TODO: no option id note???
 
     def __init__(self, hot_episode: Folge):
         self.current_episode = hot_episode
@@ -167,6 +164,8 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
 
+    CSS_PATH = "../CSS/EpisodeModals.tcss"
+
     def __init__(self, copy_from: None or Folge = None, p_uid: int = 0):
         self.copy_from = copy_from
         if not self.copy_from and p_uid:
@@ -174,6 +173,10 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             if current_play:
                 self.copy_from = Folge(
                     title="",
+                    description="",
+                    desc_addon="",
+                    notes="",
+                    yt_link=None,
                     db_project=current_play.db_uid
                 )
         super().__init__()
@@ -186,7 +189,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         self.gui_counter2 = Input(placeholder="##", classes="compact_input", type="integer")
         self.description = TextArea(id="tx_description", soft_wrap=True, show_line_numbers=True)
         self.desc_addon = TextArea(id="tx_desc_addon", soft_wrap=True, show_line_numbers=True)
-        with Vertical(classes="center_vert"):
+        with Vertical(classes="generic_modal_main"):
             yield Label(f"Edit or Create Entry", classes="title")
             with Horizontal():
                 yield self.gui_title
@@ -219,8 +222,9 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             self.gui_counter2.border_subtitle = "##"
             self.description.text = str(self.copy_from.description)
             self.desc_addon.text = str(self.copy_from.desc_addon)
+
         else:
-            # there has to be some kind of kind of copy from
+            # there has to be some kind of copy from
             self.app.notify(i18n['No suiteable creation method for episode found'], severity="error")
             self.dismiss(None)
 
@@ -254,6 +258,23 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
     def _btn_abort(self):
         self._action_abort()
 
+    @on(TextArea.Changed, "#tx_description")
+    def _on_description_length_change(self):
+        d_len = wlen(self.description.text)
+        if d_len > 0:
+            self.query_exactly_one("#Description").title = f"{i18n['Description']} [{i18n.t('combo_words', {'%%number%%': d_len})}]"
+        else:
+            self.query_exactly_one("#Description").title = i18n['Description']
+
+    @on(TextArea.Changed, "#tx_desc_addon")
+    def _on_desc_addon_length_change(self):
+        a_d_len = len(self.desc_addon.text)
+        if a_d_len > 0:
+            self.query_exactly_one("#Desc_Addon").title = f"{i18n['Description Addon']} [{i18n.t('combo_chars', {'%%number%%': a_d_len})}]"
+        else:
+            self.query_exactly_one("#Desc_Addon").title = i18n['Description Addon']
+
+
 class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
     """
     A multi purpose modal to write 'notes' or any multi lined text that can be done on the fly
@@ -266,6 +287,8 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True),
         Binding(key="ctrl+r", action="reset", description=i18n['Reset'])
     ]
+
+    CSS_PATH = "../CSS/EpisodeModals.tcss"
 
     def __init__(self, notes: Folge | Playlist | str | None = None, option: str = "note"):
         self.notes: Folge | Playlist | str | None = None
@@ -284,12 +307,12 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         elif option == "description":
             self.modus = 4
             self.note_attr = "description"
-        else: # std mode, as before a added descriptions
+        else: # std mode, as before I added descriptions
             self.note_attr = "notes"
         super().__init__()
 
     def compose(self) -> ComposeResult:
-        with Vertical(id="wrapper"):
+        with Vertical(id="wrapper", classes="generic_modal_main"):
             with Vertical():
                 yield Header(id="headline")
                 # TODO: collapse when others are open

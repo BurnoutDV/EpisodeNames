@@ -52,6 +52,8 @@ class TemplateScreen(Screen):
         "$$description$$",
     ]
 
+    CSS_PATH = "../CSS/TemplateScreen.tcss"
+
     def __init__(self):
         self.filter_bar = Input(id="filter", placeholder=i18n['Enter Filter here'], classes="small_input")
         self.templates = Tree("Label", id="template_list")

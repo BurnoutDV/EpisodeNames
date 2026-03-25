@@ -1,0 +1,66 @@
+SettingsScreen {
+
+    #main{
+        align: center top;
+    }
+
+    Input {
+        max-width: 50;
+    }
+
+    #top_dog {
+        align: center top;
+        height: auto;
+        Button {
+            padding: 0;
+            margin: 0;
+            margin-left: 1;
+            width: 1fr;
+        }
+        Horizontal {
+            width: 55%;
+            min-width: 97;
+            height: auto;
+            padding: 0;
+            margin: 0;
+        }
+    }
+
+    Horizontal {
+        height: auto;
+    }
+
+    .settings {
+        border: none;
+        border-top: outer $panel;
+        border-title-align: left;
+        border-title-color: $foreground-darken-3;
+        border-left: outer $panel;
+        border-right: outer $panel;
+        height: auto;
+        width: 60%;
+        min-width: 100;
+        padding: 1;
+        &:focus-within {
+              border-left: outer $accent;
+              border-right: outer $accent;
+              border-top: outer $accent;
+              background: $surface-lighten-1;
+          }
+    }
+
+    Button, Checkbox {
+        height: 3;
+        width: 1fr;
+        text-align: start;
+        margin: 1;
+    }
+
+    Label {
+        height: 3;
+        color: $primary;
+        border: ascii $accent;
+        padding-left: 10;
+        padding-right: 10;
+    }
+}

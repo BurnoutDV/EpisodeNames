@@ -1,0 +1,123 @@
+* {
+  scrollbar-color: $secondary 60%;
+  scrollbar-color-hover: $primary 80%;
+  scrollbar-color-active: $primary;
+  scrollbar-background: $surface-darken-1;
+  scrollbar-background-hover: $surface-darken-1;
+  scrollbar-background-active: $surface-darken-1;
+  scrollbar-size-vertical: 1;
+
+  &:focus {
+    scrollbar-color: $primary 55%;
+  }
+}
+
+AutoComplete {
+
+  /*Input {
+      border-left: wide $accent;
+      background: $surface;
+  }*/
+
+  & AutoCompleteList {
+    color: $text-muted;
+    background: transparent;
+  }
+
+  & .autocomplete--highlight-match {
+    color: $text-accent;
+    background: $accent-muted;
+  }
+}
+
+.compact_input {
+    width: 1fr;
+    height: 2;
+    border: vkey $foreground-darken-3;
+    border-bottom: vkey $foreground-darken-3;
+    border-top: none;
+    margin-left: 1;
+    margin-right: 1;
+    border-subtitle-color: $background-lighten-3;
+    border-subtitle-background: transparent;
+    border-subtitle-align: left;
+    background: $background 40%;
+    &:focus {
+        border: vkey $primary;
+        border-bottom: vkey $primary;
+        border-top: none;
+        background: $panel 30%;
+    }
+}
+
+.generic_modal_main {
+    height: 65%;
+    width: 70%;
+    background: $panel;
+    border: outer $accent 70%;
+}
+
+Button#save,
+Button#btn_yes,
+Button#btn_save
+{
+    background: $success 30%;
+    &:hover {
+        background: $success 50%;
+    }
+}
+
+Button#abort
+Button#btn_no,
+Button#btn_abort,
+Button#btn_cancel
+{
+    background: $error 30%;
+    &:hover {
+        background: $error 50%;
+    }
+}
+
+.center_vert {
+    padding: 0 1;
+    width: 80%;
+    height: 90%;
+    /*max-height: 24;*/
+    border: thick $background 80%;
+    background: $surface;
+}
+
+Horizontal.adjust {
+    align: center middle;
+    Button {
+        margin: 0 3;
+    }
+}
+
+.title {
+    padding: 1 1;
+}
+
+.max_height {
+    height: 100%;
+}
+
+DebugLog {
+    align: center middle;
+    background: $primary 40%;
+
+    #log_overlay {
+        height: 80%;
+        border: thick $background 80%;
+        background: $surface;
+        margin-left: 4;
+        margin-right: 4;
+    }
+}
+
+.small_input {
+    border:none;
+    height: 1;
+    background: $panel;
+}
+

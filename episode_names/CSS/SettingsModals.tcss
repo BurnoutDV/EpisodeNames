@@ -1,0 +1,9 @@
+SelectExport {
+    align: center middle;
+    background: $panel 70%;
+
+    .generic_modal_main {
+        height: 15;
+        width: 60
+    }
+}

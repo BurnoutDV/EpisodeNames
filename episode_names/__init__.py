@@ -3,9 +3,13 @@ __author__ = "Bruno DeVries"
 __license__ = "GPL-3"
 __appname__ = "episode_names"
 __appauthor__ = "BurnoutDV" # my preferred name so to speak
-__folder_version__ = "1.1-dev" # in case of breaking changes, change this
+__folder_version__ = "1.2-dev" # in case of breaking changes, change this
 
 __previous_db_versions__ = ['1.0', '1.1'] # ? maybe enrich these with information about the deltas
+
+__default_dateformat__ = "%d.%m.%Y"
+__default_datetimeformat__ = "%d.%m.%y %H:%M:%S"
+
 """
 # Patch Notes
 ## 0.0.3
@@ -48,4 +52,13 @@ Bigger Update to add some features I dreamed up in 6 Months
 ## 0.2.4
 * Dialogue for Previous Versions
 * Additional 'Note' entries in the DataTable to show all the informations that might be present
+## 0.3.1
+* YouTube Linking enable
+* Linking SubModul
+* Database for Youtube Data
+* DTOs for Youtube Data
+* reordered templates into more files
+* changed some keybindings
+* added descriptions & tooltips for the episode keybindings
+* partial export (but not import)
 """

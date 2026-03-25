@@ -1,0 +1,43 @@
+LinkVideoModal {
+    align: right middle;
+    background: $success 30%;
+    #main {
+        margin: 2;
+        background: $panel;
+        border: outer $accent 70%;
+    }
+
+    #left {
+        width: 30%;
+    }
+
+    #middle {
+        width: 40%;
+    }
+
+    #right {
+        width: 30%;
+    }
+
+    .adjust {
+        height: 7;
+        padding: 2;
+        background: $panel;
+    }
+}
+
+LinkPlaylistModal {
+    align: center middle;
+    background: $success 30%;
+    #wrapper {/*
+        width: 60%;
+        height: 70%;
+        background: $panel;
+        border: outer $accent 70%;*/
+    }
+
+    Placeholder {
+        width: 15;
+        height: auto;
+    }
+}

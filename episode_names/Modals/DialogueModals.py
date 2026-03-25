@@ -18,6 +18,7 @@ class YesNoBox(ModalScreen[bool | None]):
         Binding("enter", "accept_accept_true", i18n['Yes']),
         Binding("escape", "accept_decline_false", i18n['No'])
     ]
+    CSS_PATH = "../CSS/DialogueModals.tcss"
 
     def __init__(self, message: str = ""):
         self.internal_message = message
@@ -76,7 +77,7 @@ class ConfirmMessageBox(ModalScreen[bool]):
                 yield Button(i18n['Yes'], id="btn_yes")
                 yield Button(i18n['Cancel'], id="btn_no")
 
-    def _on_mount(self) -> None:
+    def on_mount(self) -> None:
         if self.display_checkbox:
             self.query_exactly_one("#btn_yes").disabled = True
 

@@ -114,23 +114,28 @@ Aufnahme vom $$record_date$$ - #$$counter1$$ - ##$$counter2$$"""
     Project.create_new(Playlist("Dragon Age Origins", "disgrace"))
     print("Done with my dastardly task master")
 
-def create_description_text(this: Folge) -> str or None:
+def multisub(subs, subject):
+    """
+    Simultaneously perform all substitutions on the subject string.
+    """
+    # https://stackoverflow.com/a/765835
+    pattern = '|'.join('(%s)' % re.escape(p) for p, s in subs)
+    substs = [s for p, s in subs]
+    replace = lambda m: substs[m.lastindex - 1]
+    return re.sub(pattern, replace, subject)
+
+def create_description_text(this: Folge,
+                            date_format: str = "%d.%m.%Y",
+                            override: PatternTemplate | None = None) -> str or None:
     """
 
     TODO: make this more efficient.
 
-    :param this:
-    :return:
+    :param override: You can set your own TextTemplate that is to be used instead
+    :param date_format: DATE, not *datetime* Format for release_date field
+    :param this: Folge class, not an *Episode* difference, although in doesnt matter here
+    :return: str
     """
-    def multisub(subs, subject):
-        """
-        Simultaneously perform all substitutions on the subject string.
-        """
-        # https://stackoverflow.com/a/765835
-        pattern = '|'.join('(%s)' % re.escape(p) for p, s in subs)
-        substs = [s for p, s in subs]
-        replace = lambda m: substs[m.lastindex - 1]
-        return re.sub(pattern, replace, subject)
 
     def temporary_real_escape(temple: PatternTemplate) -> PatternTemplate:
         """
@@ -155,9 +160,12 @@ def create_description_text(this: Folge) -> str or None:
     if not this.db_template:
         return None
 
-    text = TextTemplate.as_PTemplate_by_uid(this.db_template)
-    if not text:
-        return None # If no template is assigned
+    if override:
+        text = override
+    else:
+        text = TextTemplate.as_PTemplate_by_uid(this.db_template)
+        if not text:
+            return None # If no template is assigned
 
     text = temporary_real_escape(text)
     # ? prep step for suffix & prefix of description stuff
@@ -176,7 +184,7 @@ def create_description_text(this: Folge) -> str or None:
         ("$$session$$", this.session),
         ("$$desc_addon$$", this.desc_addon),
         ("$$description$$", this.description),
-        ("$$record_date$$", this.recording_date.strftime("%d.%m.%Y")), # TODO: make this setting
+        ("$$record_date$$", this.recording_date.strftime(date_format)), # TODO: make this setting
         ("$$title$$", this.title)
         ], text.pattern)
 

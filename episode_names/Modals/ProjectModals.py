@@ -43,6 +43,10 @@ class CreateEditProject(ModalScreen[Playlist | None | bool]):
         Binding(key="escape", action="abort", description=i18n['Cancel'])
     ]
 
+    # TODO: stream line style of this with rest of interface
+
+    CSS_PATH = "../CSS/ProjectModals.tcss"
+
     def __init__(self, initial_project: Playlist or None = None):
         self.tx_title = i18n['Editing an existing Project']
         if not initial_project:
@@ -62,7 +66,7 @@ class CreateEditProject(ModalScreen[Playlist | None | bool]):
             self.can_delete = Project.is_empty(self.initial_project.db_uid)
             self.app.write_log(f"Can delete yes/no: {str(self.can_delete)}")
 
-        with Vertical(classes="center_vert"):
+        with Vertical(classes="generic_modal_main"):
             with ScrollableContainer(id="min_height_enforcer"):
                 yield Label(self.tx_title, classes="title")
                 yield self.pr_title
