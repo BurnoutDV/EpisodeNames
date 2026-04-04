@@ -196,6 +196,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             with Horizontal():
                 yield self.gui_session
                 yield self.gui_date
+                # TODO: bind up/down arrow to increment date
                 yield self.gui_counter1
                 yield self.gui_counter2
             with Collapsible(collapsed=True, title=i18n['Description Addon'], id="Desc_Addon"):
@@ -229,26 +230,50 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
             self.dismiss(None)
 
     def _action_save(self):
+        form = self._get_form_as_folge()
+        if form:
+            self.dismiss(form)
+
+    def _get_form_as_folge(self):
         try:
+            # TODO: use agree upon dateform from settings here
             rec_date = datetime.strptime(self.gui_date.value, "%d.%m.%Y").date()
         except ValueError:
             rec_date = None
-        form = Folge(
-            title=self.gui_title.value,
-            db_uid=self.copy_from.db_uid if self.copy_from else -1,
-            db_project=self.copy_from.db_project if self.copy_from else -1,
-            db_template=self.copy_from.db_template if self.copy_from else -1,
-            counter1=self.gui_counter1.value,
-            counter2=self.gui_counter2.value,
-            session=self.gui_session.value,
-            description=self.description.text.strip(),
-            desc_addon=self.desc_addon.text.strip(),
-            recording_date=rec_date if rec_date else date.today(),
-        )
-        self.dismiss(form)
+        try:
+            return Folge(
+                title=self.gui_title.value,
+                db_uid=self.copy_from.db_uid if self.copy_from else -1,
+                db_project=self.copy_from.db_project if self.copy_from else 0,
+                db_template=self.copy_from.db_template if self.copy_from else None,
+                yt_link=self.copy_from.yt_link if self.copy_from else None,
+                yt_human_touch=self.copy_from.yt_human_touch if self.copy_from else None,
+                counter1=int(self.gui_counter1.value), # TODO: maybe buffer this with except dude
+                counter2=int(self.gui_counter2.value),
+                # extra_counter= NO WIDGET YET
+                session=self.gui_session.value,
+                description=self.description.text.strip(),
+                desc_addon=self.desc_addon.text.strip(),
+                recording_date=rec_date if rec_date else date.today(),
+            )
+        except ValueError:
+            self.app.notify(i18n['Counter1&2 have to be Numbers'],severity="error")
+            return None
 
     def _action_abort(self):
-        self.dismiss(None)
+        from episode_names.Modals import YesNoBox # ? Local Import because reasons
+        # TODO make this configurable, maybe on a per-form basis
+        form = self._get_form_as_folge()
+        if not form: # ! this is a bit stupid, if the counters are wrong no warning
+            self.dismiss(None) # ? in theory, they cant be; input cannot accept..but...users..
+        if self.copy_from and self.copy_from != form:
+            def callback_box(status: bool):
+                if status:
+                    self.dismiss(None)
+                    return
+            self.app.push_screen(YesNoBox(i18n['Data has changed, discard changes?']), callback_box)
+        else:
+            self.dismiss(None)
 
     @on(Button.Pressed, "#save")
     def _btn_save(self):
