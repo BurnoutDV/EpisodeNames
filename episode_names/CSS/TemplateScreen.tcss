@@ -29,6 +29,7 @@ TemplateScreen {
 
     #presufix {
         height: 4;
+        background: $surface;
         &:focus-within {
               border-left: outer $accent;
               border-right: outer $accent;

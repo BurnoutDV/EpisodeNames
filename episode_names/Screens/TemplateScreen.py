@@ -152,6 +152,16 @@ class TemplateScreen(Screen):
         else:
             self.set_editor(data)
 
+    @on(TextArea.Changed, "#tags")
+    def _on_tags_changed(self):
+        raw_text = self.tags.text
+        tags = raw_text.split(",")
+        pure_len = ""
+        for each in tags: # ? simple join wont do, but there has to be some better
+            pure_len+= each.strip() # ? way of getting this done
+        self.query_exactly_one("#tag_collapse").title = f"{i18n['Tags']} {len(pure_len)}/500"
+        # TODO: use replacement i18n function here for right handed languages
+
     def _action_save(self):
         if not self.current_pattern:
             return
