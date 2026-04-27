@@ -32,6 +32,7 @@ from textual.screen import ModalScreen
 
 from episode_names.Utility import i18n, wlen
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
+from episode_names.Utility.custom_widgets import DateInput
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):
     BINDINGS = [
@@ -39,7 +40,7 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
 
-    # TODO: no option id note???
+    # TODO: no option id note??? - 2026-04-28 what?
 
     def __init__(self, hot_episode: Folge):
         self.current_episode = hot_episode
@@ -184,7 +185,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
     def compose(self) -> ComposeResult:
         self.gui_title = Input(placeholder=i18n['Title'])
         self.gui_session = Input(placeholder=i18n['Session'], classes="compact_input")
-        self.gui_date = Input(placeholder=i18n['Date'], classes="compact_input") # TOdO: find date widget or constrained
+        self.gui_date = DateInput(placeholder=i18n['Date'], classes="compact_input") # TOdO: find date widget or constrained
         self.gui_counter1 = Input(placeholder="#", classes="compact_input", type="integer")
         self.gui_counter2 = Input(placeholder="##", classes="compact_input", type="integer")
         self.description = TextArea(id="tx_description", soft_wrap=True, show_line_numbers=True)
@@ -195,7 +196,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
                 yield self.gui_title
             with Horizontal():
                 yield self.gui_session
-                yield self.gui_date
+                yield self.gui_date # TODO bind +/- to gadget increment date by 1 day
                 # TODO: bind up/down arrow to increment date
                 yield self.gui_counter1
                 yield self.gui_counter2

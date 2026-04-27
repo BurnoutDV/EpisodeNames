@@ -20,12 +20,41 @@ from textual.widget import Widget
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
+from typing import ClassVar
+from datetime import date, datetime, timedelta
 
 from textual import on
-from textual.widgets import Tabs, Tab, Static
+from textual.binding import Binding, BindingType
+from textual.widgets import Tabs, Tab, Input
+
+_RESTRICT_TYPES = {
+    # ? ISO DATE + whatever germans use, eg: 2026-05-12 | 12.05.2026
+    'date': r"^(([0]?[1-9]|[1-2][0-9]|[3][0-1])\.([1][0-2]|[0]?[1-9])\.(([0-9]{4}|[0-9]{2}))|([0-9]{4})-([0][1-9]|[1][0-2])-([0][1-9]|[1-2][0-9]|[3][0-1]))"
+}
 
 def binding_text(key_bind: str, content: str) -> str:
     return f"[bold][$accent]{key_bind}[/][/bold] {content}"
+
+class DateInput(Input):
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding(key="ctrl+plus", action="increment_date", description="adds a day", show=False),
+        Binding(key="ctrl+minus", action="decrement_date", description="substracts a day", show=False),
+    ]
+    def __init__(self, *bit, **bops):
+        # TODO: add date format restriction
+        # for this I need to write an validator and attach it on init/afterwards
+        super().__init__(*bit, **bops)
+
+    def action_increment_date(self):
+        # TODO: make this more flexible
+        a_date = datetime.strptime(self.value, "%d.%m.%Y").date()
+        a_date = a_date + timedelta(days=1)
+        self.value = a_date.strftime("%d.%m.%Y")
+
+    def action_decrement_date(self):
+        a_date = datetime.strptime(self.value, "%d.%m.%Y").date()
+        a_date = a_date + timedelta(days=-1)
+        self.value = a_date.strftime("%d.%m.%Y")
 
 class EnPageMarker(Widget):
     DEFAULT_CSS = """
