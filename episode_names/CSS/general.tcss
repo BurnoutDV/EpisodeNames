@@ -108,10 +108,11 @@ DebugLog {
 
     #log_overlay {
         height: 80%;
+        width: 80%;
         border: thick $background 80%;
         background: $surface;
-        margin-left: 4;
-        margin-right: 4;
+        margin-left: 15;
+        margin-right: 15;
     }
 }
 
@@ -119,5 +120,9 @@ DebugLog {
     border:none;
     height: 1;
     background: $panel;
+}
+
+.fr3 {
+    width: 3fr;
 }
 

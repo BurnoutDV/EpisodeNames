@@ -27,7 +27,7 @@ from textual import on, events
 from textual.app import ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal, ScrollableContainer
-from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, MarkdownViewer, TextArea
+from textual.widgets import DataTable, Footer, Tree, TabbedContent, TabPane, MarkdownViewer, TextArea, Label
 from textual.screen import Screen
 
 from episode_names.__init__ import __default_dateformat__, __default_datetimeformat__
@@ -43,7 +43,7 @@ class EpisodeScreen(Screen):
     notes_group = Binding.Group(i18n['Notes Group'])
     BINDINGS = [
         # todo: tooltips
-        Binding(key="d", action="new_entry", description=i18n['New Entry'], group=entry_group, tooltip=i18n['New Entry Tooltip']),
+        Binding(key="d", action="new_entry", description=i18n['New Entry'], group=entry_group, tooltip=i18n.c('New Entry')),
         Binding(key="enter, e", action="edit_entry", description=i18n['Edit Entry'], priority=True, group=entry_group, tooltip=i18n['Edit Entry Tooltip']),
         Binding(key="a", action="assign_template", description=i18n['Assign Template'], group=entry_group, tooltip=i18n['Assign Template Tooltip']),
         Binding(key="q", action="copy_text", description=i18n['Copy Text'], group=copy_group, tooltip=i18n['Copy Text Tooltip']),
@@ -87,17 +87,20 @@ class EpisodeScreen(Screen):
     def compose(self) -> ComposeResult:#
         self.projects = Tree("Project", id="project_tree")
         self.entryview = DataTable(id="entryview", zebra_stripes=True, cursor_type="row")
+        self.tabbed_label = Label("", id="current_project_label", classes="project_label_above_tabbed")
         yield EnPageMarker("f1")
         with Horizontal():
             yield self.projects
-            with TabbedContent(id="tabs"):
-                with TabPane(i18n['Episodes'], id='tab_episode'):
-                    with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
-                        yield self.entryview
-                with TabPane(i18n['Project Notes']):
-                    yield MarkdownViewer(id='project_notes', show_table_of_contents=False)
-                with TabPane(i18n['All Notes']):
-                    yield MarkdownViewer(id="combined_view", show_table_of_contents=False)
+            with Vertical(classes="fr3"):
+                yield self.tabbed_label
+                with TabbedContent(id="tabs"):
+                    with TabPane(i18n['Episodes'], id='tab_episode'):
+                        with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
+                            yield self.entryview
+                    with TabPane(i18n['Project Notes']):
+                        yield MarkdownViewer(id='project_notes', show_table_of_contents=False)
+                    with TabPane(i18n['All Notes']):
+                        yield MarkdownViewer(id="combined_view", show_table_of_contents=False)
         yield Footer(id="heinz")
 
     def on_mount(self) -> None:
@@ -395,7 +398,10 @@ class EpisodeScreen(Screen):
         self.entryview.clear(columns=True)
         self.entryview.show_header = True
         self.current_project = p_uid  # even for empty sets the project ID is still set
+        this_proj = Project.as_Playlist_by_uid(self.current_project)
         data_ep: list[Folge] | None = Episode.by_project(p_uid, order="desc")
+        # "header" text label, f-string ception, thats dirty code for ya
+        self.tabbed_label.content = f"{this_proj.title} - {f'{len(data_ep)} {i18n['episodes']}' if data_ep else i18n['empty']}"
         # display dummy text if none is present
         if not data_ep:
             self.entryview.show_header = False

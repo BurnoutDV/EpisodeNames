@@ -38,7 +38,9 @@ def binding_text(key_bind: str, content: str) -> str:
 class DateInput(Input):
     BINDINGS: ClassVar[list[BindingType]] = [
         Binding(key="ctrl+plus", action="increment_date", description="adds a day", show=False),
+        Binding(key="up", action="increment_date", description="adds a day", show=False),
         Binding(key="ctrl+minus", action="decrement_date", description="substracts a day", show=False),
+        Binding(key="down", action="decrement_date", description="substracts a day", show=False),
     ]
     def __init__(self, *bit, **bops):
         # TODO: add date format restriction

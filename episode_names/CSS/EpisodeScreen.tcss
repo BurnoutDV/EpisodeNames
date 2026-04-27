@@ -47,4 +47,9 @@ EpisodeScreen {
     TabPane {
     }
 
+    .project_label_above_tabbed {
+        margin-left: 3;
+        text-style: bold;
+    }
+
 }

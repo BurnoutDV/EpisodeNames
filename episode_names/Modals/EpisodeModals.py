@@ -196,8 +196,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
                 yield self.gui_title
             with Horizontal():
                 yield self.gui_session
-                yield self.gui_date # TODO bind +/- to gadget increment date by 1 day
-                # TODO: bind up/down arrow to increment date
+                yield self.gui_date
                 yield self.gui_counter1
                 yield self.gui_counter2
             with Collapsible(collapsed=True, title=i18n['Description Addon'], id="Desc_Addon"):
