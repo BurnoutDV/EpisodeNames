@@ -61,6 +61,7 @@ def normalize_datetime(in_date: str | datetime | None = None, default_on_now: bo
 class Folge:
     title: str
     joined_template_title: str | None = None  # this feels not right
+    project_title: str | None = None # hydrated for now only used in linking recommends 2026-05-01
     counter1: int = 1
     counter2: int = 0
     extra_counter: str | None = None #mostly chars like 'b' for 64b
@@ -82,8 +83,27 @@ class Folge:
 
     def __str__(self):
         if self.counter2 > 0:
-            return f"{self.title} #{self.counter1}##{self.counter2} - {self.session} [desc:{len(self.description)}]"
-        return f"{self.title} #{self.counter1} - {self.session} [desc:{len(self.description)}]"
+            return f"#{self.counter1}##{self.counter2} - {self.title} (ses, rec: {self.session if self.session else 'empty'}, {self.recording_date if self.recording_date else 'empty'}) [desc:{len(self.description)}]"
+        return f"#{self.counter1} - {self.title} (ses, rec: {self.session if self.session else 'empty'}, {self.recording_date if self.recording_date else 'empty'}) [desc:{len(self.description)}]"
+
+    def __eq__(self, other: 'Folge') -> bool:
+        """
+        Actually compares only the non-database parts against each other
+        :param other Folge: the other Folge to compare to
+        :return:
+        """
+        if not isinstance(other, Folge):
+            return NotImplemented
+        if (self.title == other.title
+            and self.counter1 == other.counter1
+            and self.counter2 == other.counter2
+            and self.extra_counter == other.extra_counter
+            and self.description == other.description
+            and self.desc_addon == other.desc_addon
+            and self.notes == other.notes
+            and self.recording_date == other.recording_date):
+            return True
+        return False
 
     @staticmethod
     def from_episode(this: 'Episode') -> 'Folge':
@@ -95,6 +115,7 @@ class Folge:
         return Folge(
             title=this.title,
             joined_template_title=template_title,
+            project_title=this.project.name if this.project else None,
             counter1=this.counter1,
             counter2=this.counter2,
             extra_counter=this.extra_counter,
@@ -213,6 +234,8 @@ class YtVideo:
 
     @staticmethod
     def from_yt_db_vid(this: 'YtDbVid') -> 'YtVideo':
+        if not this: # TODO: make a variant for enriched/linked variant
+            return None
         return YtVideo(yt_id=this.yt_id,# linter complaints, but this works automagically
                        title=this.title,
                        description=this.description,
@@ -230,8 +253,8 @@ class YtPlaylist:
     yt_id: str
     title: str
     description: str = ""
-    template_id: int | None = None
-    template_title: str | None = None
+    project_id: int | None = None
+    project_title: str | None = None
     publish_date: datetime | None = None
     last_update: datetime | None = None
     entries: int = 0
@@ -242,8 +265,8 @@ class YtPlaylist:
             yt_id=this.yt_id,
             title=this.title,
             description=this.description,
-            template_id=this.template_id,
-            template_title=None, # TODO handle this properly
+            project_id=this.project_id,
+            project_title=None, # TODO handle this properly
             publish_date=this.publish_date,
             last_update=this.edit_date,
             entries=this.entries
@@ -264,6 +287,9 @@ class Project(BaseModel):
 
     edit_date = DateTimeField(default=datetime.now)
     create_date = DateTimeField(default=datetime.now)
+
+    def __str__(self):
+        return f"Peewee:Project::'{str(self.name)}', cat:'{str(self.category)}', desc:{len(self.description)}, notes:{len(self.notes) if self.notes else 0}"
 
     @staticmethod
     def as_Playlist_by_uid(p_uid) -> Playlist:
@@ -868,8 +894,8 @@ videos. Holding this all in my head creates an headache tbh.
 """
 
 class YtDbPlay(BaseModel): # ? this name is hell
-    yt_id = CharField(max_length=36, primary_key=True) # actually its 34
-    template = ForeignKeyField(TextTemplate, lazy_load=True, null=True)
+    yt_id = CharField(max_length=36, primary_key=True, unique=True) # actually its 34
+    project = ForeignKeyField(Project, lazy_load=True, null=True)
     title = CharField(max_length=150)
     description = TextField(null=True)
     entries = IntegerField()
@@ -892,15 +918,11 @@ class YtDbPlay(BaseModel): # ? this name is hell
     @staticmethod
     def assign_videos(playlist_id: str, vids: list[YtVideo]) -> bool:
         # purge numbering for this playlist
-        YtDbNumbering.delete().where(YtDbNumbering.playlist_id == playlist_id)
+        YtDbNumbering.purge_playlist_links(playlist_id)
         for each in vids:
             YtDbVid.update_or_create(each)
             # create connection
-            YtDbNumbering.insert(
-                playlist_id=playlist_id,
-                video_id=each.yt_id,
-                position=each.pl_pos
-            ).execute()
+            YtDbNumbering.update_or_create(playlist_id, each.yt_id, each.pl_pos)
         return True
 
     @staticmethod
@@ -925,13 +947,14 @@ class YtDbPlay(BaseModel): # ? this name is hell
 
     @staticmethod
     def update_or_create(this: YtPlaylist) -> str:
+        # TODO: on conflict rules not working, investigate
         res = (YtDbPlay.insert(
             yt_id=this.yt_id,
             title=this.title,
             description=this.description,
             entries=this.entries,
             publish_date=this.publish_date,
-            template_id=this.template_id,
+            project_id=this.project_id,
             edit_date=datetime.now(),
             create_date=datetime.now(),
         ).on_conflict(
@@ -942,7 +965,7 @@ class YtDbPlay(BaseModel): # ? this name is hell
                 YtDbPlay.description: this.description,
                 YtDbPlay.entries: this.entries,
                 YtDbPlay.publish_date: this.publish_date,
-                YtDbPlay.template_id: this.template_id,
+                YtDbPlay.project_id: this.project_id,
                 YtDbPlay.edit_date: datetime.now(),
             }
         ).execute())
@@ -953,7 +976,7 @@ class YtDbPlay(BaseModel): # ? this name is hell
                              title: str,
                              description: str | None = None,
                              entries: int = 0,
-                             template_id: int | None = None,
+                             project_id: int | None = None,
                              publish_date: str | datetime | None = None,
                              edit_date: str | datetime | None = None,
                              create_date: str | datetime | None = None) -> str:
@@ -964,12 +987,12 @@ class YtDbPlay(BaseModel): # ? this name is hell
             description=description,
             entries=entries,
             publish_date=publish_date,
-            template_id=template_id,
+            project_id=project_id,
             edit_date=normalize_datetime(edit_date, True),
             create_date=normalize_datetime(create_date, True),
         ).on_conflict(
             conflict_target=(YtDbPlay.yt_id,),
-            preserve=(YtDbPlay.create_date,YtDbPlay.template),
+            preserve=(YtDbPlay.create_date,YtDbPlay.project),
             update={
                 YtDbPlay.title: title,
                 YtDbPlay.description: description,
@@ -989,7 +1012,7 @@ end less duplicated text that has to be taken care of in other places like
 the export things. 
 """
 class YtDbVid(BaseModel):
-    yt_id = CharField(max_length=12, primary_key=True) # its 11 actually?
+    yt_id = CharField(max_length=12, primary_key=True, unique=True) # its 11 actually?
 
     title = CharField(max_length=100)
     description = TextField(null=True)
@@ -1102,16 +1125,17 @@ class YtDbNumbering(BaseModel):
 
     @staticmethod
     def update_or_create(playlist_id: str, video_id: str, position: int):
-        res = (YtDbPlay.insert(
+        # TODO: this isnt working potentially
+        res = (YtDbNumbering.insert(
             playlist_id=playlist_id,
             video_id=video_id,
             position=position
-        ).on_conflict(
-            conflict_target=(YtDbNumbering.playlist_id,YtDbNumbering.video_id),
-            update={
-                YtDbNumbering.position: position,
-            }
         ).execute())
+        return res
+
+    @staticmethod
+    def purge_playlist_links(playlist_id: str) -> int:
+        res = (YtDbNumbering.delete().where(YtDbNumbering.playlist_id == playlist_id).execute())
         return res
 
 def init_db(db_path="episoden_names.db",  creation=False):

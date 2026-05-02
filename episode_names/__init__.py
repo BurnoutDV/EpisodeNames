@@ -61,4 +61,5 @@ Bigger Update to add some features I dreamed up in 6 Months
 * changed some keybindings
 * added descriptions & tooltips for the episode keybindings
 * partial export (but not import)
+* the first time I expose an API key to the world
 """

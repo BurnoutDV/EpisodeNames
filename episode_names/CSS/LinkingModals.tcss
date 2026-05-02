@@ -7,22 +7,99 @@ LinkVideoModal {
         border: outer $accent 70%;
     }
 
+    .chk_selected {
+        background: $secondary 30%;
+        &:hover {
+            background: $secondary 10%;
+        }
+    }
+
     #left {
-        width: 30%;
+        width: 3fr;
+        #yt_desc_addon {
+            height: auto;
+        }
+        #yt_desc {
+            height: auto;
+        }
+
+        #yt_title {
+            margin-left: 0;
+            margin-bottom: 1;
+        }
+
+        Label {
+            margin-bottom: 1;
+        }
+
+        TextArea {
+            margin-bottom: 1;
+        }
+        Input {
+            margin-right: 1;
+            margin-left: 1;
+            margin-bottom: 1;
+        }
+
     }
 
     #middle {
-        width: 40%;
+        width: 3fr;
+        TabPane {
+            margin-left: 1;
+            margin-right: 1;
+        }
     }
 
     #right {
-        width: 30%;
+        width: 3fr;
+        #fl_title {
+            margin-left: 0;
+            margin-right: 5; /* Why 5? Should be 1 */
+        }
+
+        #col_desc_addon {
+            margin-left: 1;
+            margin-right: 1;
+        }
+
+        TextArea {
+            height: auto;
+            margin-bottom: 1;
+        }
+        Select {
+            margin-bottom: 1;
+        }
     }
 
     .adjust {
         height: 7;
         padding: 2;
         background: $panel;
+    }
+
+    #preview {
+        background: $warning-darken-3;
+        &:hover {
+            background: $warning-darken-2;
+        }
+    }
+
+    .shrinkwrap {
+        height: auto;
+        Input {
+            margin-left: 1;
+            margin-right: 1;
+            margin-bottom: 1;
+        }
+        Checkbox {
+            margin-bottom: 1;
+        }
+    }
+
+    .minimal {
+        padding: 0;
+        margin: 0;
     }
 }
 

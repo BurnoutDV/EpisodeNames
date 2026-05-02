@@ -268,31 +268,32 @@ def import_from_json(file_path: Path | str) -> int:
         )
         count+= 1
     # * Yt Db Data, those come with an external id so we dont need to remap things
-    for yt_play in raw_data['YtDbPlay'].values():
-        YtDbPlay.update_or_create_raw(
-            yt_id=yt_play['yt_id'],
-            template_id=yt_play.get('template_id', None),
-            title=yt_play['title'],
-            description=yt_play.get('description', None),
-            entries=yt_play.get('entries', 0),
-            publish_date=yt_play.get('publish_date', None),
-            edit_date=yt_play.get('edit_date', None),
-            create_date=yt_play.get('create_date', None),
-        )
-    for yt_vid in raw_data['YtDbVid'].values():
-        YtDbVid.update_or_create_raw(
-            yt_id=yt_vid['yt_id'],
-            template_id=yt_vid.get('template_id', None),
-            title=yt_vid['title'],
-            description=yt_vid.get('description', None),
-            views=yt_vid.get('views', None),
-            publish_date=yt_vid.get('publish_date', None),
-            upload_date=yt_vid.get('upload_date', None),
-            last_update=yt_vid.get('last_update', None),
-            last_full_update=yt_vid.get('last_full_update', None),
-            edit_date=yt_vid.get('edit_date', None),
-            create_date=yt_vid.get('create_date', None),
-        )
+    if 'YtDbPlay' in raw_data and 'YtDbVid' in raw_data:
+        for yt_play in raw_data['YtDbPlay'].values():
+            YtDbPlay.update_or_create_raw(
+                yt_id=yt_play['yt_id'],
+                project_id=yt_play.get('project_id', None),
+                title=yt_play['title'],
+                description=yt_play.get('description', None),
+                entries=yt_play.get('entries', 0),
+                publish_date=yt_play.get('publish_date', None),
+                edit_date=yt_play.get('edit_date', None),
+                create_date=yt_play.get('create_date', None),
+            )
+        for yt_vid in raw_data['YtDbVid'].values():
+            YtDbVid.update_or_create_raw(
+                yt_id=yt_vid['yt_id'],
+                template_id=yt_vid.get('template_id', None),
+                title=yt_vid['title'],
+                description=yt_vid.get('description', None),
+                views=yt_vid.get('views', None),
+                publish_date=yt_vid.get('publish_date', None),
+                upload_date=yt_vid.get('upload_date', None),
+                last_update=yt_vid.get('last_update', None),
+                last_full_update=yt_vid.get('last_full_update', None),
+                edit_date=yt_vid.get('edit_date', None),
+                create_date=yt_vid.get('create_date', None),
+            )
     # * Settings exist since v0.2.3
     if 'Settings' in raw_data:
         for setti in raw_data['Settings'].values():

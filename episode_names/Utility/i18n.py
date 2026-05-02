@@ -70,6 +70,11 @@ class LanguageArchive(dict):
         if not item in self:
             logging.warning(f"Unknown token '{item}'")
             return Text(f"F:{item}")
+        matches = re.match(r"(?:\$\$)(.*?)(?:\$\$)", style)
+        if matches:
+            for each in matches:
+                if each in LanguageArchive.color_map:
+                    style = style.replace(f"$${each[0]}$$", LanguageArchive.color_map[each])
         return Text(super().get(item), style)
 
     def c(self, combo_template) -> str | Text:
@@ -81,7 +86,29 @@ class LanguageArchive(dict):
         # ? all this only to get colored titles for some tooltip :/
         if not combo_template in self.combo_template:
             logging.warning(f"Unknown combo template '{combo_template}'")
-            return Text(f"F:{combo_template}")
+            return f"C:{combo_template}"
+        _c = self.combo_template[combo_template]
+        if not ({*[1, 2, 't']} <= _c.keys()):
+            logging.warning(f"Combo template '{combo_template}' malformed")
+            return Text(f"C:{combo_template}")
+        if _c[1] not in self and _c[2] in self:
+            logging.warning(f"Combo template '{combo_template}' misses item {_c[1]}")
+            return f"C:{c[1]}"
+        elif _c[2] not in self and _c[1] in self:
+            logging.warning(f"Combo template '{combo_template}' misses item {_c[2]}")
+            return f"C:{_c[2]}"
+        elif _c[1] not in self and _c[2] not in self:
+            logging.warning(f"Combo template '{combo_template}' misses item {_c[1]} AND {_c[2]}")
+            return f"C:{_c[1]}&{_c[2]}"
+        # strategies:
+        i1 = _c[1]
+        i2 = _c[2]
+        if 'r1' in _c:
+            i1 = self.r(i1, _c['r1'])
+        if 'r2' in _c:
+            i2 = self.r(i1, _c['r2'])
+        re.match(r"((.*)(%%item1)(.*)(%%item2)(.*))", _c['t'])
+        return "bla"#_c['t'].replace("%%item1", i1).replace("%%item2", i2)
         # TODO: finish this, its more than I expected tbh.
 
     def t(self, item:str, replace_list: dict[str: str] | None = None) -> str:
@@ -115,6 +142,8 @@ i18n = LanguageArchive({
     'Style': "Style",
     'Backup': "Backup",
     'Projects': "Projects",
+    'episodes': "Episodes",
+    'empty': "empty",
 
     'Entry Group': "Edit, Create, Assign a Template to Entry",
     'CopyPaste Group': "Copy templated, markdown or tags",
@@ -241,7 +270,7 @@ i18n.combo_template = {
         1: 'New Entry',
         2: 'Edit Entry Tooltip',
         't': "%%item1\n%%item2",
-        'r': ['bold $$accent$$']
+        'r1': 'bold $$accent$$',
     }
 }
 

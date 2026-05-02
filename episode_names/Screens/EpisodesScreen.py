@@ -95,6 +95,7 @@ class EpisodeScreen(Screen):
                 yield self.tabbed_label
                 with TabbedContent(id="tabs"):
                     with TabPane(i18n['Episodes'], id='tab_episode'):
+                        # TODO: something here is wonky
                         with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
                             yield self.entryview
                     with TabPane(i18n['Project Notes']):
@@ -541,7 +542,7 @@ class EpisodeScreen(Screen):
         Uses the self.project_tree class variable to find the TreeNode that matches the given name
         or data_id
         :param int|None project_id: ID of the project that is in the project node
-        :param str|None fuzzy_name: name of the node, will select the first match
+        :param str|None fuzzy_name: name of the node, will select the first match (not implemented)
         :return: bool, if something was selected or not
         """
         if not project_id and not fuzzy_name:
@@ -553,6 +554,7 @@ class EpisodeScreen(Screen):
                     self.projects.move_cursor_to_line(i-1)
                     return True
             return False # if none was found
+        # TODO: implement fuzzy name select of tree node (why ever, I dont know)
 
     def _select_episode_dataview(self) -> Folge:
         row_key, column_key = self.entryview.coordinate_to_cell_key(self.entryview.cursor_coordinate)

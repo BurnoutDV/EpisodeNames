@@ -80,6 +80,7 @@ class DebugLog(ModalScreen[bool]):
         ("escape", "back", i18n['Cancel']),
         ("ctrl+c", "quit", i18n['Quit']),
     ]
+
     def __init__(self, log: RichLog):
         self.debug = log
         super().__init__()
@@ -146,7 +147,6 @@ class EpisodeNames(App):
         if unconfirmed:
             self.show_old_db_modal(unconfirmed)
 
-
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
         yield from super().get_system_commands(screen)
         # hide default commands
@@ -211,11 +211,13 @@ class EpisodeNames(App):
                 self.action_quit()
         self.app.push_screen(YesNoBox(i18n["Do you want to quit?"]), handle_quit_message)
 
+
 def run_main():
     print("Running App")
     user_setup(__appname__, __appauthor__, __folder_version__)
     app = EpisodeNames()
     app.run()
+
 
 if __name__ == "__main__":
     run_main()

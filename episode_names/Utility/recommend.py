@@ -18,6 +18,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
+import logging
+from typing import Union
 
 from episode_names.Utility.db import Episode, YtVideo, YtPlaylist, Folge, TextTemplate, PatternTemplate, init_db, \
     YtDbVid, YtDbPlay, Project
@@ -167,9 +169,85 @@ def find_related_project(YtDbPlay_id: str,
         return final_hits
     return None
 
+# ? Idee: bestimmte Teile automatisiert erkenne, wie Meta daten blöcke anhand von
+# ? playlist links oder chapter notes daran das sie ein bestimmtes zeit format ham
+
+def find_related_folge(RevFolge: Folge,
+                      max_hits: int= 10) -> dict[int: Folge] | None:
+    folgen_list = {}
+    # ? do not show projects that already have a link?
+    #! Step 1: direct hits with 100% same title
+    hits = None
+    if RevFolge.db_project: # decreases search hits:
+        try:
+            hits = (Episode.select()
+                    .where(Episode.project == RevFolge.db_project)
+                    .where(Episode.title.contains(RevFolge.title)).
+                    limit(15))
+        except Episode.DoesNotExist:
+            pass # nothing happened
+    else:
+        try:
+            hits = (Episode.select()
+                    .where(Episode.title.contains(RevFolge.title)).
+                    limit(15))
+        except Episode.DoesNotExist:
+            pass
+    if hits:
+        for episode in hits:
+            folgen_list[episode.id] = Folge.from_episode(episode)
+            if len(folgen_list) > max_hits:
+                return folgen_list
+    #! Step 2: we look for chunks of title shards in other titles..this is where the spam begins
+    # TODO: this is language thing, has to be configurable
+    sentence_parts = ["der", "die", "das", "the", "and", "und", "bei", "von", "from", "to",
+                      "zu", "auf", "nach", "vor", "dann", "mit", "zum", "zur", "kein", "wie",
+                      "was", "wer", "wo", "welche", "des", "dem", "viel", "ein", "eine", "in"]
+    pieces = RevFolge.title.split(" ") # I boldly assume multi word titles
+    shatter = []
+    for each in pieces: # I think this is "expensive" and can be done "cheaper" in a pythonic way
+        if each not in sentence_parts:
+            shatter.append(each)
+    hits = {}
+    if len(shatter): # ? for all sentence parts we search everywhere
+        for part in shatter:
+            if len(part) <= 0: # shouldnt happen
+                continue
+            try:
+                if RevFolge.db_project:
+                    res: list[Episode] = (Episode
+                           .select()
+                           .where(Episode.project == RevFolge.db_project)
+                           .where(Episode.title.ilike(f'%{part}%')))
+                else:
+                    res: list[Episode] = (Episode
+                           .select()
+                           .where(Episode.title.ilike(f'%{part}%')))
+                for each in res:
+                    if each.id not in hits:
+                        hits[each.id] = Folge.from_episode(each) # THIS is expensive..i think
+            except Project.DoesNotExist:
+                pass  # TODO: logging here Alan
+    if hits:
+        # rank stuff
+        for key, other_folge in hits.items():
+            dist = SequenceMatcher(None, RevFolge.title , other_folge.title)
+            hits[key] = {'folge': other_folge, 'dist': dist.ratio(), 'note': 'title_matcher'}
+        sortiert = sorted(hits, key=lambda x: hits[x]['dist'], reverse=True)
+        for each in sortiert:
+            if each not in folgen_list:
+                folgen_list[each] = hits[each]['folge']
+            if len(folgen_list) > max_hits:
+                return folgen_list
+    # ! Step 3: by episode number, pretty forward when in project, otherwise not
+    if not folgen_list:
+        return None
+    return folgen_list
+
 def use_template_as_reverse_extractor(vid: YtVideo,
                                       tmple: PatternTemplate,
-                                      first_line_title: bool = True) -> Episode | None:
+                                      first_line_title: bool = True,
+                                      diagnostic: bool = False) -> Folge | None | tuple[str, str]:
     """
     This assumes a lot. Mostly that you write a Template first that captures the essence a repeating
     thing you always do. The use case is that you have always done episodic content following a certain
@@ -183,14 +261,19 @@ def use_template_as_reverse_extractor(vid: YtVideo,
     :param first_line_title: we boldly assume that the first line of a template is the title
     :param vid: a yt video file
     :param tmple: a template, usually either the one from the playlist or an individual assigned one
+    :param diagnostic: if True the (regex pattern, match block) are returned as tuple instead
     :return:
     """
     if not first_line_title:
         # if the title is somewhere else we need a vastly different approach
+        logging.warning("use_template_as_reverse_extractor: first_line_title not supported yet")
         return None
     # ? for some reason I thought $$variable$$ would be better than %%variable%%..so here were are
     # TODO: maybe just change this with a small script on startup for future versions, its not a hard change
-    better = multisub([
+    group_names = ['counter1', 'counter2', 'session', 'desc_addon', 'description', 'record_date', 'title']
+    # TODO: Folge can have extra_counter
+    # TODO: give ability to return re_format and match_blockw
+    re_format = multisub([
             ("$$counter1$$", "%%counter1%%"),
             ("$$counter2$$", "%%counter2%%"),
             ("$$session$$", "%%session%%"),
@@ -199,9 +282,43 @@ def use_template_as_reverse_extractor(vid: YtVideo,
             ("$$record_date$$", "%%record_date%%"),
             ("$$title$$", "%%title%%")
         ], tmple.pattern)
-    best = re.escape(better).strip()
-    bla = re.match(r'((?:.*)(?P<placeholder>%%.*%%)(?:.*))', best)
-    return best
+    re_format = re.escape(re_format).strip()
+    re_format = re_format.replace("/", "\\/") # for some reasons this is not in re.escape
+    re_format = multisub([
+        ("%%counter1%%", "(?P<counter1>.*)"),
+        ("%%counter2%%", "(?P<counter2>.*)"),
+        ("%%session%%", "(?P<session>.*)"),
+        ("%%desc_addon%%", "(?P<desc_addon>.*)?"),
+        ("%%description%%", "(?P<description>.*)"),
+        ("%%record_date%%", "(?P<record_date>.*)"),
+        ("%%title%%", "(?P<title>.*)")
+    ], re_format)
+    match_block = vid.title + "\n" + vid.description + "\n"
+    if diagnostic: # ? diagnostic return for user site trouble shooting
+        return re_format, match_block
+    match = re.match(re_format, match_block, re.DOTALL)
+    if not match:
+        logging.warning("use_template_as_reverse_extractor: No regex match")
+        return None
+    proto_episode = {}
+    for name in group_names:
+        try:
+            proto_episode[name] = match.group(name)
+        except IndexError: # dont care
+            continue
+    if not proto_episode.get('title', '').strip():
+        logging.warning("use_template_as_reverse_extractor: regex match got no title")
+        return None
+    return Folge(title=proto_episode.get('title'),
+                 counter1=proto_episode.get('counter1', 1),
+                 counter2=proto_episode.get('counter2', 0),
+                 session=proto_episode.get('session', ""),
+                 description=proto_episode.get('description', "").strip(),
+                 desc_addon=proto_episode.get('desc_addon', "").strip(),
+                 recording_date=proto_episode.get('record_date', ""),
+                 db_template=tmple.db_uid,
+                 joined_template_title=tmple.title # as it happens can we just add this with no cost
+                 )
 
 def setup_test_environment():
     user_dir = user_data_dir(__appname__, __appauthor__, version=__folder_version__)
@@ -221,8 +338,8 @@ if __name__ == "__main__":
         print(f"find relate projects for playlist '{random_playlist_id}'")
         raw_dict = find_related_project(random_playlist_id)
         print(json.dumps(raw_dict, indent=2))
-    if reverse_boy == True:
-        tpl = PatternTemplate.from_TextTemplate(TextTemplate.get_by_id(14)) # rogue trader
-        vid = YtVideo.from_yt_db_vid(YtDbVid.get_by_id("H5w8tL6gwzk")) # Rogue Trader 47
+    if reverse_boy:
+        tpl = PatternTemplate.from_TextTemplate(TextTemplate.get_by_id(12)) # rogue trader
+        vid = YtVideo.from_yt_db_vid(YtDbVid.get_by_id("vWYzPNBNkIM")) # Rogue Trader 47
         print(use_template_as_reverse_extractor(vid, tpl))
     # ! Tests here Alan

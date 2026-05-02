@@ -24,9 +24,14 @@ import os
 import re
 import json
 
+from textual.widgets import Tree
+
 from pathlib import Path
 from platformdirs import user_data_dir
 from datetime import date
+
+from textual.widgets._tree import TreeNode, TreeDataType
+
 from episode_names.Utility.db import init_db, Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
 
 def new_episode(previous: Folge,
@@ -187,6 +192,30 @@ def create_description_text(this: Folge,
         ("$$record_date$$", this.recording_date.strftime(date_format)), # TODO: make this setting
         ("$$title$$", this.title)
         ], text.pattern)
+
+
+def get_tree_node_with_data(tree: Tree, value: str | int, *keys) -> TreeNode[TreeDataType] | None:
+    """Returns the first node that got a matching value in the json data field
+    under the chain of *keys given.
+    usage example: Tree.get_node_with_data(42, 'database', 'id')
+    Args:
+        tree: the actuall tree widget, this is supposed to be part of the Tree Widget, see PullReq 5362
+        value: str|int of the desired data in the data json
+        *keys: chain of keys to the nested value
+    Returns:
+        The first Node with the desired value or None
+    """
+    for treeline in tree._tree_lines:
+        if treeline.node.data:
+            data = treeline.node.data
+            try:
+                for key in keys:
+                    data = data[key]
+                if data == value:
+                    return treeline.node
+            except(KeyError, TypeError):
+                continue
+    return None  # if nothing was found
 
 def user_setup(name, author, version) -> None:
     """
