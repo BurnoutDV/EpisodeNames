@@ -138,7 +138,6 @@ class Playlist:
     title: str
     category: str = ""
     description: str = ""
-    # TODO: add note for Playlist and Project
     notes: str | None = None
     # * Youtube Connection (or any other video site I guess?)
     yt_link: str | None = None
@@ -232,10 +231,13 @@ class YtVideo:
     edit_date: datetime | None = datetime.now()
     create_date: datetime | None = datetime.now()
 
+    # TODO: unify usage of methods in DTOs and db objects
+    """It appears that the original Episode/Folge stuff follows a different philosophy
+    than the later youtube linking things, that annoys me greatly, I am quite sure i have
+    written this text already somewhere, maybe in a commit message or so"""
+
     @staticmethod
     def from_yt_db_vid(this: 'YtDbVid') -> 'YtVideo':
-        if not this: # TODO: make a variant for enriched/linked variant
-            return None
         return YtVideo(yt_id=this.yt_id,# linter complaints, but this works automagically
                        title=this.title,
                        description=this.description,
@@ -247,6 +249,10 @@ class YtVideo:
                        template_id=this.template_id,
                        edit_date=this.edit_date,
                        create_date=this.create_date)
+
+    @staticmethod
+    def from_yt_db_vid_hydrated(this: 'YtDbVid', playlist_yt_id: str):
+        raise NotImplemented # this is somehow more sexy than just empty returns
 
 @dataclass
 class YtPlaylist:
@@ -846,10 +852,10 @@ class Settings(BaseModel):
              .where(Settings.key == this_key)
              .limit(1)
              .get())
+            if res.value is None:
+                return default
             return res.value
         except Settings.DoesNotExist:
-            if not default:
-                return None
             return default
 
     @staticmethod
@@ -926,12 +932,13 @@ class YtDbPlay(BaseModel): # ? this name is hell
         return True
 
     @staticmethod
-    def get_playlist_videos(playlist_id: str) -> list[YtVideo] | None :
+    def get_playlist_videos(playlist_id: str, start_position: int = 0) -> list[YtVideo] | None :
         try:
             res = (YtDbNumbering
                    .select(YtDbNumbering.video, YtDbNumbering.position)
                    .join(YtDbVid, JOIN.LEFT_OUTER)
                    .where(YtDbNumbering.playlist_id == playlist_id)
+                   .where(YtDbNumbering.position >= start_position)
                    .order_by(YtDbNumbering.position))
             if not res:
                 return None

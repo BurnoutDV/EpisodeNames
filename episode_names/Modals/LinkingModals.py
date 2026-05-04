@@ -32,7 +32,8 @@ from textual.widgets.option_list import Option
 from textual.screen import ModalScreen
 
 from episode_names.Utility import i18n, get_tree_node_with_data
-from episode_names.Utility.db import Episode, Project, YtVideo, YtPlaylist, Folge, TextTemplate, PatternTemplate
+from episode_names.Utility.db import Episode, Project, YtVideo, YtPlaylist, Folge, TextTemplate, PatternTemplate, \
+    Settings
 from episode_names.Utility import find_related_project, find_related_folge
 
 
@@ -43,14 +44,14 @@ class LinkVideoModal(ModalScreen[Folge]):
         Binding(key="ctrl+p", action="preview", description=i18n['Preview']),
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
-    CHECK_WIDGET_LINK = {
-        'chk_title': 'fl_title',
-        'chk_description': 'fl_description',
-        'chk_counter1': 'fl_counter1',
-        'chk_counter2': 'fl_counter2',
-        'chk_session': 'fl_session',
-        'chk_date': 'fl_date',
-        'chk_desc_addon': 'fl_desc_addon',
+    CHECK_WIDGET_LINK = { # TODO: condense this further, its the same names with prefix anyway
+        'chk_title': 'title',
+        'chk_description': 'description',
+        'chk_counter1': 'counter1',
+        'chk_counter2': 'counter2',
+        'chk_session': 'session',
+        'chk_date': 'date',
+        'chk_desc_addon': 'desc_addon',
     }
     MODE_SELECT_PRESETS = {
         0: [],
@@ -58,13 +59,13 @@ class LinkVideoModal(ModalScreen[Folge]):
         2: ['chk_title', 'chk_description']
     }
     FOLGE_WIDGET_LINK = { # links the Folge attributes to the widgets on the right
-        "fl_title": "title",
-        "fl_description": "description",
-        "fl_counter1": "counter1",
-        "fl_counter2": "counter2",
-        "fl_session": "session",
-        "fl_date": "recording_date",
-        "fl_desc_addon": "desc_addon"
+        "title": "title",
+        "description": "description",
+        "counter1": "counter1",
+        "counter2": "counter2",
+        "session": "session",
+        "date": "recording_date",
+        "desc_addon": "desc_addon"
     }
     def __init__(self, video: Folge):
         self.video: Folge = video
@@ -90,7 +91,7 @@ class LinkVideoModal(ModalScreen[Folge]):
                     with ScrollableContainer(id="left"):
                         yield Label(i18n['Transcriped YT Data'])
                         yield Input(placeholder="yt title", id="yt_title")
-                        yield TextArea(placeholder="yt desc", id="yt_desc")
+                        yield TextArea(placeholder="yt desc", id="yt_description")
                         with Horizontal(classes="shrinkwrap"):
                             yield Input(placeholder=i18n['Session'], classes="compact_input", id="yt_session")
                             yield Input(placeholder=i18n['Date'], classes="compact_input", id="yt_date")
@@ -119,7 +120,7 @@ class LinkVideoModal(ModalScreen[Folge]):
                             yield Input(placeholder=i18n['Title'], id="fl_title")
                         with Horizontal(classes="shrinkwrap"):
                             yield Checkbox(classes="minimal", id="chk_description")
-                            yield TextArea(id="fl_description", soft_wrap=True, show_line_numbers=True)
+                            yield TextArea(id="fl_description", soft_wrap=True)
                         with Horizontal(classes="shrinkwrap"):
                             yield Checkbox(classes="minimal", id="chk_session")
                             yield Input(placeholder=i18n['Session'], classes="compact_input", id="fl_session")
@@ -143,14 +144,15 @@ class LinkVideoModal(ModalScreen[Folge]):
     def _on_mount(self, event: events.Mount) -> None:
         if not self.video: # this makes no sense if somehow nothing is given
             self.dismiss(None)
-        self.query_exactly_one("#yt_title").value = str(self.video.title)
-        self.query_exactly_one("#yt_desc").text = str(self.video.description)
-        self.query_exactly_one("#yt_desc_addon").text = str(self.video.desc_addon)
-        self.query_exactly_one("#yt_date").value = str(self.video.recording_date)
-        self.query_exactly_one("#yt_session").value = str(self.video.session)
-        self.query_exactly_one("#yt_counter1").value = str(int(self.video.counter1))
-        self.query_exactly_one("#yt_counter2").value = str(int(self.video.counter2))
-        self.query_exactly_one("#mode_select").value = 1
+        # fill right side widgets
+        for wdg_id, attr in self.FOLGE_WIDGET_LINK.items():
+            temp = self.query_one(f"#yt_{wdg_id}")
+            if isinstance(temp, TextArea):  # this kills any lines i wanted to save
+                temp.text = self.video.__getattribute__(attr)
+            else:
+                # counter 1 & 2 are ints, but casting it as str is never wrong
+                temp.value = str(self.video.__getattribute__(attr))
+        self.query_exactly_one("#mode_select").value = int(Settings.save_retrieve_key("linking_mode_select", 0))
         # ? Populate recommend
         # TODO maybe make this async, it feels like this is a big ressource hog
         recommends: Tree = self.query_exactly_one("#recommends")
@@ -179,16 +181,8 @@ class LinkVideoModal(ModalScreen[Folge]):
         self.update_folge_side(None, True)
 
     def update_folge_side(self, a_folge: Folge | None, disable_all = False):
-        relevant_widgets = {"#fl_title": "" if disable_all else a_folge.title,
-                            "#fl_description": "" if disable_all else a_folge.description,
-                            "#fl_counter1": "" if disable_all else str(a_folge.counter1),
-                            "#fl_counter2": "" if disable_all else str(a_folge.counter2),
-                            "#fl_session": "" if disable_all else a_folge.session,
-                            "#fl_date": "" if disable_all else str(a_folge.recording_date),
-                            "#fl_desc_addon": "" if disable_all else a_folge.desc_addon
-                            }
         for each in self.FOLGE_WIDGET_LINK.keys():
-            self.query_one(f"#{each}").disabled = disable_all
+            self.query_one(f"#fl_{each}").disabled = disable_all
         col_desc_addon: Collapsible = self.query_one("#col_desc_addon")
         col_desc_addon.collapsed = True
         col_desc_addon.disabled = disable_all
@@ -196,7 +190,7 @@ class LinkVideoModal(ModalScreen[Folge]):
             a_folge = Folge("empty") # we need that dummy, otherwise its not possible to not give it
             return
         for key, value in self.FOLGE_WIDGET_LINK.items():
-            temp = self.query_one(f"#{key}")
+            temp = self.query_one(f"#fl_{key}")
             if isinstance(temp, TextArea): # this kills any lines i wanted to save
                 temp.text = a_folge.__getattribute__(value)
             else:
@@ -208,7 +202,7 @@ class LinkVideoModal(ModalScreen[Folge]):
         if event.checkbox.id not in self.CHECK_WIDGET_LINK:
             return  # third party checkbox # ? yes, I know that those should not exists..anyway
         this: Checkbox = self.query_one(f"#{event.checkbox.id}")
-        that: Input | TextArea = self.query_one(f"#{self.CHECK_WIDGET_LINK[event.checkbox.id]}")
+        that: Input | TextArea = self.query_one(f"#fl_{self.CHECK_WIDGET_LINK[event.checkbox.id]}")
         if event.checkbox.value: # == True
             that.add_class("chk_selected")
             this.add_class("chk_selected")
@@ -254,7 +248,7 @@ class LinkVideoModal(ModalScreen[Folge]):
         """
         Handler for the mode select which are basically presets of selected checkboxes
         """
-        if message.select.value == Select.NULL:
+        if message.select.is_blank():
             return
         for wdg_id in self.CHECK_WIDGET_LINK:
             wdg: Checkbox = self.query_one(f"#{wdg_id}")
@@ -275,7 +269,7 @@ class LinkVideoModal(ModalScreen[Folge]):
         # TODO: use the actual widget content and not the generating temp Video-Episode
         for chk_id, wdg_id in self.CHECK_WIDGET_LINK.items():
             if self.query_one(f"#{chk_id}").value is True: # we are verbose today arent we?
-                wdg = self.query_one(f"#{wdg_id}")
+                wdg = self.query_one(f"#fl_{wdg_id}")
                 if isinstance(wdg, TextArea):
                     wdg.text = self.video.__getattribute__(self.FOLGE_WIDGET_LINK[wdg_id])
                 else:
@@ -285,6 +279,10 @@ class LinkVideoModal(ModalScreen[Folge]):
     def _action_save(self):
         if not self.current_folge:
             self.app.notify(i18n['Cannot save when no episode is selected'], severity="warning")
+        # save select status
+        sl_mode: Select = self.query_one("#mode_select")
+        if sl_mode.value != Select.NULL:
+            Settings.update_or_set_key("linking_mode_select", str(sl_mode.value))
         # TODO: as in btn_preview, use actual widget content (or just trigger preview beforehand?)
         for chk_id, wdg_id in self.CHECK_WIDGET_LINK.items():
             if self.query_one(f"#{chk_id}").value is True: # we are verbose today arent we?
