@@ -2,18 +2,6 @@ CreateEditEpisode {
     align: center middle;
     background: $background 80%;
 
-    ScrollableContainer {
-        height: auto;
-    }
-
-    Vertical {
-        overflow-y: auto;
-    }
-
-    Horizontal {
-        width: 1fr;
-    }
-
     Input {
         border: round $foreground-darken-3;
         background: transparent;
@@ -22,6 +10,24 @@ CreateEditEpisode {
             border: round $primary;
         }
     }
+
+    .adjust {
+        height: 5;
+    }
+
+    .main_title {
+        height: 3;
+    }
+
+    .compact_input {
+        min-width: 20;
+    }
+
+    .compact_line {
+        height: 2;
+        margin-bottom: 1;
+    }
+
     Collapsible {
         height: auto;
         margin-left: 1;
@@ -53,7 +59,7 @@ WriteNoteModal {
         background: $surface;*/
     }
 
-    .project_note {
+    .no_height_limit {
         max-height: initial !important;
 
         TextArea {
@@ -64,4 +70,26 @@ WriteNoteModal {
             height: 5;
         }
     }
+}
+
+AssignTemplate {
+    align: center middle;
+    background: $background 80%;
+
+    .generic_modal_main {
+        .adjust {
+            height: 5;
+        }
+
+        OptionList {
+            height: 100%;
+        }
+
+        Label {
+            background: $panel;
+            margin-bottom: 1;
+            margin-left: 3;
+        }
+    }
+
 }

@@ -73,7 +73,7 @@ class LinkingScreen(Screen):
             super().__init__()
 
         def __str__(self):
-            return f"NextBatchVideo() {str(self.current_video)} - len playlist: {len(self.sorted_playlist)}"
+            return f"NextBatchVideo() {str(self.current_position)} - len playlist: {len(self.sorted_playlist)}"
 
     def __init__(self):
         # TODO: regex helper interface modal bla

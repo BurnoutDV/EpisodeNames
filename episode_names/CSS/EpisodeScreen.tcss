@@ -1,11 +1,14 @@
 EpisodeScreen {
     DataTable {
+
         border: none;
         border-top: outer $panel;
         border-title-align: left;
         border-title-color: $foreground-darken-3;
         border-left: outer $panel;
         border-right: outer $panel;
+        border-bottom: heavy $primary;
+        /*I dont know why, but the design here is fucked, but with a bottom border, everything is good*/
         &:focus {
           padding: 0;
           border-left: outer $accent;
@@ -21,8 +24,8 @@ EpisodeScreen {
         border-title-color: $foreground-darken-3;
         border-left: outer $panel;
         border-right: outer $panel;
-        width: 1fr;
         min-width: 32;
+        max-width: 48;
         &:focus {
           padding: 0;
           border-left: outer $accent;
@@ -40,8 +43,7 @@ EpisodeScreen {
     }
 
     TabbedContent {
-        align-horizontal: right;
-        width: 3fr;
+        height: 100%;
     }
 
     TabPane {

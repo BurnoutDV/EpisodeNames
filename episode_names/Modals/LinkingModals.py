@@ -211,6 +211,7 @@ class LinkVideoModal(ModalScreen[Folge]):
             this.remove_class("chk_selected")
         # ? automagically select the correct preset if the configuration is matching with a preset
         # ALL THIS BECAUSE ASYNC
+        # TODO: do this with bubble messages, would be cleaner
         """Story time folks, because big block comments are totally what every coding tutor teaches you, messages in 
         textual 'bubble', I first tried to do a good ol' variable that just locks the changes when the select is used
         but that wont work, because the message that a checkbox has changed will bubble afterwards when everything

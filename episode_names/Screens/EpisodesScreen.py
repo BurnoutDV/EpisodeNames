@@ -83,6 +83,7 @@ class EpisodeScreen(Screen):
         self.datetimeformat = __default_datetimeformat__
         i18n.color_map = self.app.theme_variables
         super().__init__()
+        # TODO: make a view mode, where you can swap between episodes with arrow keys with EpisodeEditModal
 
     def compose(self) -> ComposeResult:#
         self.projects = Tree("Project", id="project_tree")
@@ -95,9 +96,7 @@ class EpisodeScreen(Screen):
                 yield self.tabbed_label
                 with TabbedContent(id="tabs"):
                     with TabPane(i18n['Episodes'], id='tab_episode'):
-                        # TODO: something here is wonky
-                        with ScrollableContainer(can_focus=False): #? stop gap measure to restore scrollability
-                            yield self.entryview
+                        yield self.entryview
                     with TabPane(i18n['Project Notes']):
                         yield MarkdownViewer(id='project_notes', show_table_of_contents=False)
                     with TabPane(i18n['All Notes']):

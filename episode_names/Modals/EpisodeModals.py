@@ -26,6 +26,7 @@ from textual import on
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Vertical, Horizontal, ScrollableContainer
+from textual.message import Message
 from textual.widgets import DataTable, Footer, Input, Button, Tree, Label, Select, TextArea, OptionList, Header, Collapsible
 from textual.widgets.option_list import Option
 from textual.screen import ModalScreen
@@ -40,30 +41,36 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
 
+    CSS_PATH = "../CSS/EpisodeModals.tcss"
+
     # TODO: no option id note??? - 2026-04-28 what?
 
     def __init__(self, hot_episode: Folge):
         self.current_episode = hot_episode
+        self.locked_widgets = True
         self.cache = dict()
         super().__init__()
+
+    class UnLockWidgets(Message):
+        pass
 
     def compose(self) -> ComposeResult:
         self.preview = TextArea("", id="preview_stuff", read_only=True)
         self.templates = OptionList("", id="template_list", classes="sidebar max-height")
+        self.locked_widgets = True
 
-        with Vertical():
-            yield Header(id="headline", icon=None)
+        with Vertical(classes="generic_modal_main"):
+            # TODO: proper insert i18n here
+            yield Label(f"{i18n['Assign Template']} - {self.current_episode.counter1} - {self.current_episode.title}")
             with Horizontal(classes="max-height"):
                 yield self.templates
                 yield self.preview
             with Horizontal(classes="adjust"):
                 yield Button(i18n['Save'], id="save")
                 yield Button(i18n['Cancel'], id="abort")
-        yield Footer()
+            yield Footer()
 
     def on_mount(self) -> None:
-        self.sub_title = f"{self.current_episode.counter1} - {self.current_episode.title}"
-        self.title = i18n['Assign Template']
         self.fill_options()
 
     def fill_options(self):
@@ -85,6 +92,7 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
             index = self.templates.get_option_index("-1")
         self.templates.highlighted = index
         #self.app.write_raw_log(self.cache, "Template Cache")
+        self.post_message(self.UnLockWidgets())
 
     def save_and_exit(self, template_id: int):
         self.current_episode.db_template = template_id
@@ -117,7 +125,7 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         """
         self.dismiss(None)
 
-    @on(OptionList.OptionSelected, "#template_list")
+
     def _list_selected(self, selected: OptionList.OptionHighlighted) -> None:
         """
         When Enter Key pressed, uses that template and instantly closes the modal with the
@@ -125,7 +133,8 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         :param selected:
         :return:
         """
-        self.app.write_raw_log(selected)
+        if self.locked_widgets:
+            return
         if not selected.option_id:
             self.app.notify(f"AssignTemplate: {i18n['No Option ID']}", severity="warning")
             return
@@ -133,9 +142,9 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
             self.save_and_exit(int(selected.option_id))
         if selected.option_id == "-1":
             self.save_and_exit(-1)
-        # there should be theoretically no other option, but this way it should be written savely?
 
-    @on(OptionList.OptionHighlighted, "#template_list")
+    @on(OptionList.OptionSelected, "#template_list") # for mouse use
+    @on(OptionList.OptionHighlighted, "#template_list") # for keyboard use
     def _list_highlighted(self, selected: OptionList.OptionHighlighted) -> None:
         """
         Previews the currently highlighted option by displaying the template text in
@@ -143,6 +152,8 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
         :param selected:
         :return:
         """
+        if self.locked_widgets:
+            return
         if not selected.option_id:
             self.app.notify(f"AssignTemplate: {i18n['No Option ID']}", severity="warning")
             return
@@ -158,6 +169,10 @@ class AssignTemplate(ModalScreen[TextTemplate or None]):
     @on(Button.Pressed, "#abort")
     def _btn_abort(self) -> None:
         self._action_abort()
+
+    @on(UnLockWidgets)
+    def __unlock_widgets(self):
+        self.locked_widgets = False
 
 class CreateEditEpisode(ModalScreen[Folge or None]):
     BINDINGS = [
@@ -191,22 +206,23 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         self.description = TextArea(id="tx_description", soft_wrap=True, show_line_numbers=True)
         self.desc_addon = TextArea(id="tx_desc_addon", soft_wrap=True, show_line_numbers=True)
         with Vertical(classes="generic_modal_main"):
-            yield Label(f"Edit or Create Entry", classes="title")
-            with Horizontal():
-                yield self.gui_title
-            with Horizontal():
-                yield self.gui_session
-                yield self.gui_date
-                yield self.gui_counter1
-                yield self.gui_counter2
-            with Collapsible(collapsed=True, title=i18n['Description Addon'], id="Desc_Addon"):
-                yield self.desc_addon
-            with Collapsible(collapsed=True, title=i18n['Description'], id="Description"):
-                yield self.description
-            #yield Checkbox("apply retrograde")
-            with Horizontal(classes="adjust"):
-                yield Button(i18n['Save'], id="save")
-                yield Button(i18n['Cancel'], id="abort")
+            with Vertical():
+                yield Label(f"Edit or Create Entry", classes="title")
+                with Horizontal(classes="main_title"):
+                    yield self.gui_title
+                with Horizontal(classes="compact_line"):
+                    yield self.gui_session
+                    yield self.gui_date
+                    yield self.gui_counter1
+                    yield self.gui_counter2
+                with Collapsible(collapsed=True, title=i18n['Description Addon'], id="Desc_Addon"):
+                    yield self.desc_addon
+                with Collapsible(collapsed=True, title=i18n['Description'], id="Description"):
+                    yield self.description
+                #yield Checkbox("apply retrograde")
+                with Horizontal(classes="adjust"):
+                    yield Button(i18n['Save'], id="save")
+                    yield Button(i18n['Cancel'], id="abort")
             yield Footer()
 
     def on_mount(self) -> None:
@@ -299,12 +315,23 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         else:
             self.query_exactly_one("#Desc_Addon").title = i18n['Description Addon']
 
+    @on(Collapsible.Expanded) # assuming there is only two
+    def _collapse_bonanza(self, message: Collapsible.Toggled) -> None:
+        """
+        Closes the other collapsible
+        """
+        if message.collapsible.id == "Desc_Addon":
+            other = "#Description"
+        else:
+            other = "#Desc_Addon"
+        self.query_exactly_one(other).collapsed = True
+
 
 class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
     """
-    A multi purpose modal to write 'notes' or any multi lined text that can be done on the fly
+    A multipurpose modal to write 'notes' or any multi lined text that can be done on the fly
     while editing any object. Originally I wanted this to write notes to episodes and playlists
-    but then realized that I might aswell create it a bit more open ended so it can be used
+    but then realized that I might as well create it a bit more open-ended so it can be used
     for something else
     """
     BINDINGS = [
@@ -364,7 +391,7 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
             self.sub_title = self.notes.title
             # * additional changes to the design
             wrapper : Vertical = self.query_exactly_one("#wrapper")
-            wrapper.add_class('project_note')
+            wrapper.add_class('no_height_limit')
             tx_area : TextArea = self.query_exactly_one("#note_area")
             tx_area.soft_wrap = True
             tx_area.show_line_numbers = True
@@ -373,6 +400,8 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
             self.sub_title = f"#{self.notes.counter1} - {self.notes.title}"
         elif self.modus == 4: # * Change Solo Description
             self.title = i18n['Edit Episode Description']
+            wrapper: Vertical = self.query_exactly_one("#wrapper")
+            wrapper.add_class('no_height_limit') # a bit bigger but not as big as project_note
             self.sub_title = f"#{self.notes.counter1} - {self.notes.title}"
         else:
             self.title = i18n['Generic Note Window']
@@ -399,19 +428,13 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
     def _action_abort(self):
         self.dismiss(None)
 
-    @on(Collapsible.Expanded, "#Desc_Addon")
-    def _collapse_bonanza1(self) -> None:
-        """
-        Closes the other collapsible
-        """
-        other: Collapsible = self.query_exactly_one("#Description")
-        other.collapsed = True
-
 class GenericCopyModal(ModalScreen[str | None]):
     BINDINGS = [
         Binding(key="ctrl+s", action="save", description=i18n['Save']),
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True)
     ]
+
+    CSS_PATH = "../CSS/EpisodeModals.tcss"
 
     def __init__(self):
         super().__init__()
