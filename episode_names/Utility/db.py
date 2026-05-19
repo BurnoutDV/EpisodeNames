@@ -135,7 +135,9 @@ class Folge:
 
 @dataclass
 class Playlist:
+    # TODO: Projects have a short name in my world, integrate that
     title: str
+    #abbr: str
     category: str = ""
     description: str = ""
     notes: str | None = None
@@ -154,6 +156,7 @@ class Playlist:
             newest = None
         return Playlist(
             title=this.name,
+            #abbr=this.abbr,
             category=this.category,
             description=this.description,
             notes=this.notes,
@@ -225,9 +228,10 @@ class YtVideo:
     last_update: datetime | None = None
     last_full_update: datetime | None = None
     template_id: int | None = None
-    playlist: str | None = None
-    pl_pos: int | None = None
-
+    playlist: str | None = None # not always hydrated
+    pl_project_id: int | None = None # not always hydrated
+    pl_pos: int | None = None # not always hydrated
+    # YtVideo can exist outside a Playlist, so the association only exists in context
     edit_date: datetime | None = datetime.now()
     create_date: datetime | None = datetime.now()
 
@@ -284,6 +288,7 @@ class BaseModel(Model):
 
 class Project(BaseModel):
     name = CharField()
+    #abbr = CharField()
     category = CharField()
     description = TextField()
     notes = TextField(default="", null=True)
@@ -933,6 +938,10 @@ class YtDbPlay(BaseModel): # ? this name is hell
 
     @staticmethod
     def get_playlist_videos(playlist_id: str, start_position: int = 0) -> list[YtVideo] | None :
+        try: # first check if that playlist even exsits
+            playlist = YtDbPlay.get_by_id(playlist_id)
+        except YtDbPlay.DoesNotExists:
+            return None
         try:
             res = (YtDbNumbering
                    .select(YtDbNumbering.video, YtDbNumbering.position)
@@ -947,6 +956,7 @@ class YtDbPlay(BaseModel): # ? this name is hell
                 one = YtVideo.from_yt_db_vid(each.video)
                 one.playlist=playlist_id
                 one.pl_pos = each.position
+                one.pl_project_id = playlist.project_id
                 hydrated_videos.append(one)
             return hydrated_videos
         except YtDbPlay.DoesNotExist:
@@ -966,13 +976,13 @@ class YtDbPlay(BaseModel): # ? this name is hell
             create_date=datetime.now(),
         ).on_conflict(
             conflict_target=(YtDbPlay.yt_id,),
-            preserve=(YtDbPlay.create_date),
+            preserve=(YtDbPlay.title,
+                      YtDbPlay.description,
+                      YtDbPlay.entries,
+                      YtDbPlay.publish_date,
+                      YtDbPlay.project,
+                      YtDbPlay.edit_date),
             update={
-                YtDbPlay.title: this.title,
-                YtDbPlay.description: this.description,
-                YtDbPlay.entries: this.entries,
-                YtDbPlay.publish_date: this.publish_date,
-                YtDbPlay.project_id: this.project_id,
                 YtDbPlay.edit_date: datetime.now(),
             }
         ).execute())
@@ -1049,22 +1059,21 @@ class YtDbVid(BaseModel):
             upload_date=this.upload_date,
             publish_date=this.publish_date,
             template_id=this.template_id,
-            last_update=this.last_update,
+            last_update=datetime.now(),
             last_full_update=this.last_full_update,
             edit_date=datetime.now(),
             create_date=datetime.now(),
         ).on_conflict(
             conflict_target=(YtDbVid.yt_id,),
-            preserve=(YtDbVid.create_date),
+            preserve=(YtDbVid.title,
+                YtDbVid.description,
+                YtDbVid.views,
+                YtDbVid.upload_date,
+                YtDbVid.publish_date,
+                YtDbVid.template,
+                YtDbVid.last_full_update),
             update={
-                YtDbVid.title: this.title,
-                YtDbVid.description: this.description,
-                YtDbVid.views: this.views,
-                YtDbVid.upload_date: this.upload_date,
-                YtDbVid.publish_date: this.publish_date,
-                YtDbVid.template_id: this.template_id,
-                YtDbVid.last_update: this.last_update,
-                YtDbVid.last_full_update: this.last_full_update,
+                YtDbVid.last_update: datetime.now(),
                 YtDbVid.edit_date: datetime.now(),
             }
         ).execute())
@@ -1111,15 +1120,14 @@ class YtDbVid(BaseModel):
             create_date = normalize_datetime(create_date, True)
         ).on_conflict(
             conflict_target=(YtDbVid.yt_id,),
-            preserve=(YtDbVid.create_date, YtDbVid.template),
+            preserve=(YtDbVid.title,
+                YtDbVid.description,
+                YtDbVid.views,
+                YtDbVid.upload_date,
+                YtDbVid.publish_date,
+                YtDbVid.template_id,
+                YtDbVid.last_full_update),
             update={
-                YtDbVid.title: title,
-                YtDbVid.description: description,
-                YtDbVid.views: views,
-                YtDbVid.upload_date: normalize_datetime(upload_date),
-                YtDbVid.publish_date: normalize_datetime(publish_date),
-                YtDbVid.last_update: normalize_datetime(last_update),
-                YtDbVid.last_full_update: normalize_datetime(last_full_update),
                 YtDbVid.edit_date: datetime.now(),
             }
         ).execute())
@@ -1170,6 +1178,9 @@ def init_db(db_path="episoden_names.db",  creation=False):
                 update={Settings.value: __folder_version__})
             .execute()
         )
+        # default settings
+        Settings.update_or_set_key("bad_words_project", "Let's, Play")
+        Settings.update_or_set_key("bad_words_video", "der, die, das, the, and, und, bei, von, from, to, zu, auf, nach, vor, dann, mit, zum, zur, kein, wie, was, wer, wo, welche, des, dem, viel, ein, eine, in, of, -, Let's, Play")
     return True
 
 if __name__ == "__main__":
