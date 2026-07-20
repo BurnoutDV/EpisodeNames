@@ -34,6 +34,7 @@ from episode_names.Modals.DialogueModals import YesNoBox, ConfirmMessageBox
 from episode_names.Screens import (
     EpisodeScreen,
     TemplateScreen,
+    StatisticScreen,
     SettingsScreen,
     ModularInterface,
     LinkingScreen,
@@ -133,18 +134,19 @@ class EpisodeNames(App):
             show=False,
         ),
         Binding(
-            key="f6",
-            action="switch_mode('modular')",
-            description=i18n["Modular"],
+            key="f4",
+            action="switch_mode('statistic')",
+            description=i18n["Statistic"],
             show=False,
         ),
+        #Binding(key="f6",action="switch_mode('modular')",description=i18n["Modular"],show=False,),
         Binding(
             key="f7",
             action="switch_mode('settings')",
             description=i18n["Settings"],
             show=False,
         ),
-        Binding(key="f8", action="open_debug", description="Debug", show=False),
+        #Binding(key="f8", action="open_debug", description="Debug", show=False),
     ]
 
     MODES = {
@@ -152,6 +154,7 @@ class EpisodeNames(App):
         "templates": TemplateScreen,
         "settings": SettingsScreen,
         "linking": LinkingScreen,
+        "statistic": StatisticScreen,
         "modular": ModularInterface,
         # "help": HelpScreen,
     }
