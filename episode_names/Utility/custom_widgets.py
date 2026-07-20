@@ -25,7 +25,9 @@ from datetime import date, datetime, timedelta
 
 from textual import on
 from textual.binding import Binding, BindingType
-from textual.widgets import Tabs, Tab, Input
+from textual.widgets import Tabs, Tab, Input, TextArea
+
+from episode_names.Utility import i18n
 
 _RESTRICT_TYPES = {
     # ? ISO DATE + whatever germans use, eg: 2026-05-12 | 12.05.2026
@@ -57,6 +59,14 @@ class DateInput(Input):
         a_date = datetime.strptime(self.value, "%d.%m.%Y").date()
         a_date = a_date + timedelta(days=-1)
         self.value = a_date.strftime("%d.%m.%Y")
+
+class IncrementalInput(Input):
+    """
+    A carbon copy of Textual Input with the minimal difference that
+    IF there is a single number in the string,not two different number, not three
+    but exactly one number, arrow down and up will increment that one number.
+    If for some reasons there is more than one number, nothing happens
+    """
 
 class EnPageMarker(Widget):
     DEFAULT_CSS = """
@@ -106,3 +116,21 @@ class EnPageMarker(Widget):
     def switch_emulation(self, message: Tabs.TabActivated):
         if message.tab.id in self.switch_map:
             self.app.run_action(self.switch_map[message.tab.id])
+
+class TextArea2(TextArea):
+    """
+    This is a carbon copy of the Textual "TextArea" in all functionality, it
+    only does one thing different: select all is not F7 but CTRL+A
+    It also exposes the keys for copy, cut, paste and select all.
+    """
+    text_area_group = Binding.Group(i18n['TextArea Shortcuts'])
+    BINDINGS : ClassVar[list[BindingType]]  = [
+        Binding("home", "cursor_line_start", "Cursor line start", show=False),
+        Binding("ctrl+x", "cut", "Cut", show=True, group=text_area_group),
+        Binding("ctrl+c,super+c", "copy", "Copy", show=True, group=text_area_group),
+        Binding("ctrl+v", "paste", "Paste", show=True, group=text_area_group),
+        Binding("ctrl+a", "select_all", "Select all", show=True, group=text_area_group),
+        Binding("ctrl+z", "undo", "Undo", show=True, group=text_area_group),
+        Binding("ctrl+y", "redo", "Redo", show=True, group=text_area_group),
+    ]
+

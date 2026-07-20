@@ -33,7 +33,7 @@ from textual.screen import ModalScreen
 
 from episode_names.Utility import i18n, wlen
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
-from episode_names.Utility.custom_widgets import DateInput
+from episode_names.Utility.custom_widgets import DateInput, TextArea2
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):
     BINDINGS = [
@@ -203,8 +203,8 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         self.gui_date = DateInput(placeholder=i18n['Date'], classes="compact_input") # TOdO: find date widget or constrained
         self.gui_counter1 = Input(placeholder="#", classes="compact_input", type="integer")
         self.gui_counter2 = Input(placeholder="##", classes="compact_input", type="integer")
-        self.description = TextArea(id="tx_description", soft_wrap=True, show_line_numbers=True)
-        self.desc_addon = TextArea(id="tx_desc_addon", soft_wrap=True, show_line_numbers=True)
+        self.description = TextArea2(id="tx_description", soft_wrap=True, show_line_numbers=True) # TODO: expose textarea keyshortcuts
+        self.desc_addon = TextArea2(id="tx_desc_addon", soft_wrap=True, show_line_numbers=True)
         with Vertical(classes="generic_modal_main"):
             with Vertical():
                 yield Label(f"Edit or Create Entry", classes="title")
@@ -369,14 +369,14 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
                 yield Header(id="headline")
                 # TODO: collapse when others are open
                 with Horizontal(classes="max-height"):
-                    yield TextArea(text="", id="note_area")
+                    yield TextArea2(text="", id="note_area")
                 with Horizontal(classes="adjust"):
                     yield Button(i18n['Save'], id="btn_save")
                     yield Button(i18n['Cancel'], id="btn_abort")
             yield Footer()
 
     def on_mount(self) -> None:
-        note_text: TextArea = self.query_exactly_one("#note_area")
+        note_text: TextArea2 = self.query_exactly_one("#note_area") # typing: ignore
         if self.modus <= 4:
             if self.notes.__getattribute__(self.note_attr): # * it might be Null
                 note_text.load_text(self.notes.__getattribute__(self.note_attr))

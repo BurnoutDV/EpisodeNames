@@ -19,6 +19,7 @@
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 import logging
+from datetime import datetime
 
 from textual import on
 from textual.app import ComposeResult
@@ -26,7 +27,7 @@ from textual.binding import Binding
 from textual.containers import Vertical, Horizontal
 from textual.message import Message
 from textual.screen import Screen
-from textual.widgets import Label, DataTable, Footer, Tree, MarkdownViewer
+from textual.widgets import Label, DataTable, Footer, Tree, MarkdownViewer, Select
 
 from episode_names.Modals import LinkVideoModal
 from episode_names.Modals.DialogueModals import YesNoBox
@@ -51,6 +52,11 @@ class LinkingScreen(Screen):
     CSS_PATH = "../CSS/LinkingScreen.tcss"
 
     YT_TITLE_REGEX_DEFAULT = " - Lets Play"
+
+    COL_FILTERS = {
+        0: ['position', 'title', 'description_len', 'views', 'upload_date', 'publish_date'],
+        1: ['position', 'publish_date']
+    }
 
     class NextBatchVideo(Message):
         def __init__(self, position: int, sorted_playlist: dict[int, YtVideo]):
@@ -89,7 +95,7 @@ class LinkingScreen(Screen):
         self.datetimeformat = Settings.save_retrieve_key("datetimeformat", "%d.%m.%Y %H:%M:%S.%f")
         self.current_playlist: str | None = None # only the ID, not the whole object
         self.current_pl_videos: dict[str: YtVideo] | None = None
-
+        self.tree_column_filter = None  # * Columns that will be displayed, all if none
         super().__init__()
 
     def compose(self) -> ComposeResult:
@@ -99,7 +105,9 @@ class LinkingScreen(Screen):
         with Vertical(id="no_go_blocker"):
             yield MarkdownViewer("Walls of text", show_table_of_contents=False, id="md_no_go")
         with Vertical(id="main_vert"):
-            yield Label("Channel: bla false", id="top_label")
+            with Horizontal(id="top_bar"):
+                yield Label("Channel: bla false", id="top_label")
+                yield Select(id="col_filter_template", options=[], compact=True)
             with Horizontal(id="main_divider"):
                 yield self.playlists
                 yield self.videos
@@ -125,6 +133,13 @@ class LinkingScreen(Screen):
 
         playlists_data: list[YtPlaylist] = YtDbPlay.get_all_from_db()
         self.uti_playlist_tree_fill(playlists_data)
+        # TreeFilterSelect
+        filters: Select = self.query_one("#col_filter_template")
+        filters.set_options([
+            (i18n["Default" ], 0),
+            (i18n['#, published'], 1)
+        ])
+        filters.value = 0
 
 
     def uti_playlist_tree_fill(self, playlists_data: list[YtPlaylist]):
@@ -149,34 +164,43 @@ class LinkingScreen(Screen):
     What when multiple downloads are at the same time? Do i need a queue?
     """
 
-    def populate_video_view(self, playlist):
+    def populate_video_view(self, playlist, force_refresh = False):
         # fetch from db if available
-        self.current_playlist = playlist
-        videos: list[YtVideo] = YtDbPlay.get_playlist_videos(playlist)
-        if not videos:
-            # fetch data instead
-            # TODO: make this async
-            async def handle_callback(decision: bool):
-                if decision:
-                    vids = get_all_playlists_videos(playlist, self.api_key, complex_response=True)
-                    if not isinstance(vids, list):
-                        if isinstance(vids, int):
-                            self.app.notify(i18n.t('req_error_code', [str(vids)]))
-                        self.app.write_raw_log(vids)
-                        return
-                    YtDbPlay.assign_videos(playlist, vids)
-            self.app.push_screen(YesNoBox(i18n['Yt_Fetch_YesNo']), handle_callback)
+        if not playlist:
             return
+        if playlist != self.current_playlist or force_refresh:  # saves us a db lookup when just refreshing for reasons
+            self.current_playlist = playlist
+            videos: list[YtVideo] = YtDbPlay.get_playlist_videos(playlist)
+            if not videos:
+                # fetch data instead
+                # TODO: make this async
+                async def handle_callback(decision: bool):
+                    if decision:
+                        vids = get_all_playlists_videos(playlist, self.api_key, complex_response=True)
+                        if not isinstance(vids, list):
+                            if isinstance(vids, int):
+                                self.app.notify(i18n.t('req_error_code', [str(vids)]))
+                            self.app.write_raw_log(vids)
+                            return
+                        YtDbPlay.assign_videos(playlist, vids)
+                self.app.push_screen(YesNoBox(i18n['Yt_Fetch_YesNo']), handle_callback)
+                return
+        else:
+            videos: list[YtVideo] = [x for x in self.current_pl_videos.values()] # stupid
 
         # TODO: display all header data here but give options to reorder
         self.videos.clear(columns=True)
         self.videos.show_header = True
-        self.videos.add_column("#", key="position")
-        self.videos.add_column("title", key="title")
-        self.videos.add_column("len(Desc)", key="description_len")
-        self.videos.add_column("views", key="views")
-        self.videos.add_column("upload_date", key="upload_date")
-        self.videos.add_column("publish_date", key="publish_date")
+        self.videos.add_column(i18n["#"], key="position")
+        self.videos.add_column(i18n["title"], key="title")
+        self.videos.add_column(i18n["len(Desc)"], key="description_len")
+        self.videos.add_column(i18n["views"], key="views")
+        self.videos.add_column(i18n["upload_date"], key="upload_date")
+        self.videos.add_column(i18n["publish_date"], key="publish_date")
+        self.videos.add_column(i18n["last_update"], key="last_update")
+        self.videos.add_column(i18n["last_full_update"], key="last_full_update")
+        self.videos.add_column(i18n["create_date"], key="create_date")
+        self.videos.add_column(i18n["edit_date"], key="edit_date")
         #fill in all
         self.current_pl_videos = {} # clear
         for item in videos:
@@ -185,21 +209,33 @@ class LinkingScreen(Screen):
                     str(item.pl_pos+1),
                     item.title,
                     f'{i18n.t('combo_words', {'%%number%%': wlen(item.description)})}',
-                    item.views if item.views else 0,
-                    item.upload_date.strftime(self.datetimeformat),
-                    item.publish_date.strftime(self.datetimeformat)
+                    item.views if item.views else 0, # the following feels clunky af
+                    item.upload_date.strftime(self.datetimeformat) if isinstance(item.upload_date, datetime) else "",
+                    item.publish_date.strftime(self.datetimeformat) if isinstance(item.publish_date, datetime) else "",
+                    item.last_update.strftime(self.datetimeformat) if isinstance(item.last_update, datetime) else "",
+                    item.last_full_update.strftime(self.datetimeformat) if isinstance(item.last_full_update, datetime) else "",
+                    item.edit_date.strftime(self.datetimeformat) if isinstance(item.edit_date, datetime) else "",
+                    item.create_date.strftime(self.datetimeformat) if isinstance(item.create_date, datetime) else "",
                 ],
                 key=item.yt_id
             )
             self.current_pl_videos[item.yt_id] = item # look up table for later use, better than requesting anew
             # ? it's better because the data here is hydrated which it's not when I just retrieve plainly by id
+        if self.tree_column_filter:
+            tbr = [] # * To Be Removed..necessary because we cannot remove from activly iterated dict
+            for key, _ in self.videos.columns.items():
+                if key not in self.tree_column_filter:
+                    tbr.append(key)
+            for key in tbr:
+                self.videos.remove_column(key)
 
-    def prepare_a_video_for_linking(self, a_video: YtVideo) -> Folge | None:
+    def prepare_a_video_for_linking(self, a_video: YtVideo) -> Folge | YtVideo | None:
         a_playlist = YtPlaylist.from_yt_db_play(YtDbPlay.get_by_id(self.current_playlist))
+        a_video.pl_project_id = a_playlist.project_id # hydration
         if not a_video.template_id:  # try to get it from the playlist
             if not a_playlist.project_id:
                 self.app.notify(i18n['No assigned project found'], severity="error")
-                return None
+                return a_video
             # ! projects dont have templates, so we now, just like that, select
             # ! a random episode, probably the first, and take the template for that
             # ! one..this might work often, but not always, refactoring needed
@@ -215,17 +251,16 @@ class LinkingScreen(Screen):
         ptemplate = TextTemplate.as_PTemplate_by_uid(template_id)
         if not ptemplate:
             self.app.notify(i18n['Assigned template does not exist in Database'], severity="error")
-            return None
+            return a_video
         a_folge: Folge = use_template_as_reverse_extractor(a_video, ptemplate)
-        if not a_folge:
+        if a_folge: # TODO: give option to debug here
             self.app.notify(i18n['Couldnt reverse templating'], severity="warning")
-            return None
-        if a_playlist.project_id:  # enrichment
-            a_folge.db_project = a_playlist.project_id
-        # this temporary a_folge provides a convenient field to carry the yt-id further
-        a_folge.yt_link = a_video.yt_id
-        # TODO: give option to debug here
-        return a_folge
+            if a_playlist.project_id:  # enrichment
+                a_folge.db_project = a_playlist.project_id
+                # this temporary a_folge provides a convenient field to carry the yt-id further
+            a_folge.yt_link = a_video.yt_id
+            return a_folge
+        return a_video
 
     def _select_video_dataview(self) -> YtVideo | None:
         """
@@ -255,6 +290,15 @@ class LinkingScreen(Screen):
             return False
         self.populate_video_view(message.node.data['yt_id'])
 
+    @on(Select.Changed, "#col_filter_template")
+    def _select_col_template(self, message: Select.Changed):
+        if message.value in LinkingScreen.COL_FILTERS:
+            self.tree_column_filter = LinkingScreen.COL_FILTERS[message.value]
+        else:
+            self.tree_column_filter = None
+        if self.current_playlist: # no redraw on empty table
+            self.populate_video_view(self.current_playlist)
+
     def action_debug_pl_data(self):
         thetree : Tree = self.query_exactly_one("#playlists")
         current = thetree.cursor_node
@@ -280,7 +324,7 @@ class LinkingScreen(Screen):
         self.uti_playlist_tree_fill(playlists_data)
         self.playlists.select_node(get_tree_node_with_data(self.playlists, self.current_playlist, 'yt_id'))
 
-        self.app.notify(i18n[f'Fetched {len(vids)} Videos']) # TODO: makes this dynamic i18n
+        self.app.notify(i18n.t('Fetched n Videos', {'%%NUMBER%%': str(len(vids))}))
 
     def action_fetch_playlists(self):
         playlists = get_channel_playlists(self.channel_id, self.api_key, complex_response=True)
@@ -300,7 +344,7 @@ class LinkingScreen(Screen):
         a_video = self._select_video_dataview()
         if not a_video:
             return
-        a_folge  = self.prepare_a_video_for_linking(a_video)
+        a_folge: Episode | YtVideo  = self.prepare_a_video_for_linking(a_video)
         if not a_folge:
             self.app.notify(i18n['Playlist Position Error (should never happen category event)'], severity="error")
             return
