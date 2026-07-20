@@ -20,6 +20,8 @@ from textual.widget import Widget
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
+
+import re
 from typing import ClassVar
 from datetime import date, datetime, timedelta
 
@@ -60,6 +62,9 @@ class DateInput(Input):
         a_date = a_date + timedelta(days=-1)
         self.value = a_date.strftime("%d.%m.%Y")
 
+TEXT_ADD_ONE = "Increments one number by one"
+TEXT_SUB_ONE = "Decrements one number by one"
+
 class IncrementalInput(Input):
     """
     A carbon copy of Textual Input with the minimal difference that
@@ -67,6 +72,30 @@ class IncrementalInput(Input):
     but exactly one number, arrow down and up will increment that one number.
     If for some reasons there is more than one number, nothing happens
     """
+    BINDINGS: ClassVar[list[BindingType]] = [
+        Binding(key="ctrl+plus", action="increment", description=TEXT_ADD_ONE, show=False),
+        Binding(key="up", action="increment", description=TEXT_ADD_ONE, show=False),
+        Binding(key="ctrl+minus", action="decrement", description=TEXT_SUB_ONE, show=False),
+        Binding(key="down", action="decrement", description=TEXT_SUB_ONE, show=False),
+    ]
+    def _action_increment(self):
+        if match := self._see_if_exact_one_number():
+            self.value = match.group(1) + str(int(match.group(2))+1) + match.group(3)
+
+    def _action_decrement(self):
+        if match := self._see_if_exact_one_number():
+            if int(match.group("number")) > 0: # I don't know why gave the thing a name
+                self.value = match.group(1) + str(int(match.group(2))-1) + match.group(3)
+
+    def _see_if_exact_one_number(self) -> re.Match | bool:
+        pattern = r"^([^0-9]*)(?P<number>\d+)([^0-9]*)$"
+        if match := re.search(pattern, self.value):
+            try:
+                int(match.group('number'))
+            except TypeError:
+                return False
+            return match
+        return False
 
 class EnPageMarker(Widget):
     DEFAULT_CSS = """

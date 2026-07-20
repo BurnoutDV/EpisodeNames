@@ -33,7 +33,7 @@ from textual.screen import ModalScreen
 
 from episode_names.Utility import i18n, wlen
 from episode_names.Utility.db import Project, Playlist, Episode, Folge, TextTemplate, PatternTemplate
-from episode_names.Utility.custom_widgets import DateInput, TextArea2
+from episode_names.Utility.custom_widgets import DateInput, TextArea2, IncrementalInput
 
 class AssignTemplate(ModalScreen[TextTemplate or None]):
     BINDINGS = [
@@ -198,11 +198,11 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         super().__init__()
 
     def compose(self) -> ComposeResult:
-        self.gui_title = Input(placeholder=i18n['Title'])
-        self.gui_session = Input(placeholder=i18n['Session'], classes="compact_input")
+        self.gui_title = IncrementalInput(placeholder=i18n['Title'])
+        self.gui_session = IncrementalInput(placeholder=i18n['Session'], classes="compact_input")
         self.gui_date = DateInput(placeholder=i18n['Date'], classes="compact_input") # TOdO: find date widget or constrained
-        self.gui_counter1 = Input(placeholder="#", classes="compact_input", type="integer")
-        self.gui_counter2 = Input(placeholder="##", classes="compact_input", type="integer")
+        self.gui_counter1 = IncrementalInput(placeholder="#", classes="compact_input", type="integer")
+        self.gui_counter2 = IncrementalInput(placeholder="##", classes="compact_input", type="integer")
         self.description = TextArea2(id="tx_description", soft_wrap=True, show_line_numbers=True) # TODO: expose textarea keyshortcuts
         self.desc_addon = TextArea2(id="tx_desc_addon", soft_wrap=True, show_line_numbers=True)
         with Vertical(classes="generic_modal_main"):
