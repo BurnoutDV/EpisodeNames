@@ -37,7 +37,7 @@ from episode_names.Utility.db import Episode, Project, YtVideo, YtPlaylist, Folg
 from episode_names.Utility import find_related_project, find_related_folge
 
 
-class LinkVideoModal(ModalScreen[Folge]):
+class LinkVideoModal(ModalScreen[Folge|YtVideo]):
     CSS_PATH = "../CSS/LinkingModals.tcss"
     BINDINGS = [
         Binding(key="ctrl+s", action="save", description=i18n['Save']),
@@ -89,7 +89,7 @@ class LinkVideoModal(ModalScreen[Folge]):
             with Vertical():
                 with Horizontal():
                     with ScrollableContainer(id="left"):
-                        yield Label(i18n['Transcriped YT Data'])
+                        yield Label(i18n['Transcriped YT Data'], id="left_label")
                         yield Input(placeholder="yt title", id="yt_title")
                         yield TextArea(placeholder="yt desc", id="yt_description")
                         with Horizontal(classes="shrinkwrap"):
@@ -143,7 +143,15 @@ class LinkVideoModal(ModalScreen[Folge]):
 
     def _on_mount(self, event: events.Mount) -> None:
         if not self.video: # this makes no sense if somehow nothing is given
+            logging.warning("LinkingModal>on_mount: self.video is None, have you called the modal without data?")
             self.dismiss(None)
+        if isinstance(self.video, YtVideo):
+            self.video = Folge(self.video.title,
+                               description=self.video.description,
+                               db_project=self.video.pl_project_id)
+            # marking yt_fields as special
+            self.query_one("#left").add_class("ytvideo")
+            self.query_one("#left_label").content = i18n['Raw Youtube Data']
         # fill right side widgets
         for wdg_id, attr in self.FOLGE_WIDGET_LINK.items():
             temp = self.query_one(f"#yt_{wdg_id}")
@@ -160,8 +168,9 @@ class LinkVideoModal(ModalScreen[Folge]):
         recommends.show_guides = False
         recommends.clear()
         recommends.root.expand()
-        # TODO: the bad words should probably a config or something
-        recs: dict[int, Folge] = find_related_folge(self.video)
+        bad_words = Settings.save_retrieve_key("bad_words_video", "")
+        bad_words = bad_words.split(",")
+        recs: dict[int, Folge] = find_related_folge(self.video, additional_bad_words=bad_words)
         # ? Unlike the related_project function this one gives entire Folge entitites
         # ? back that we then can bind to the tree directly, without requesting them anew
         if not recs:
@@ -172,7 +181,7 @@ class LinkVideoModal(ModalScreen[Folge]):
             if not first_hit:
                 first_hit = key
             # ? the part with the db_uid is a legacy thing, its everywhere else
-            format_entry = f"{entry.project_title} - #{entry.counter1} {entry.title} Desc:{len(entry.description)},Add:{bool(entry.desc_addon)},Note:{bool(entry.notes)}"
+            format_entry = f"{entry.project_title} - #{entry.counter1} {entry.title} Desc:{len(entry.description)},Add:{bool(entry.desc_addon)},Note:{entry.notes}"
             recommends.root.add_leaf(format_entry, data={'db_uid': key, 'folge': entry})
         # Select first hit automatically
         if first_hit:
@@ -182,12 +191,16 @@ class LinkVideoModal(ModalScreen[Folge]):
 
     def update_folge_side(self, a_folge: Folge | None, disable_all = False):
         for each in self.FOLGE_WIDGET_LINK.keys():
-            self.query_one(f"#fl_{each}").disabled = disable_all
+            wdg = self.query_one(f"#fl_{each}")
+            wdg.disabled = disable_all
+            if isinstance(wdg, TextArea): # this kills any lines i wanted to save
+                wdg.text = ""
+            else:
+                wdg.value = str("")
         col_desc_addon: Collapsible = self.query_one("#col_desc_addon")
         col_desc_addon.collapsed = True
         col_desc_addon.disabled = disable_all
         if disable_all:
-            a_folge = Folge("empty") # we need that dummy, otherwise its not possible to not give it
             return
         for key, value in self.FOLGE_WIDGET_LINK.items():
             temp = self.query_one(f"#fl_{key}")
@@ -330,8 +343,9 @@ class LinkPlaylistModal(ModalScreen[Project]):
         recommends.show_guides = False
         recommends.clear()
         recommends.root.expand()
-        # TODO: the bad words should probably a config or something
-        recs = find_related_project(self.playlist.yt_id, additional_bad_words=["Let's", "Play"])
+        bad_words = Settings.save_retrieve_key("bad_words_project", "")
+        bad_words = bad_words.split(",")
+        recs = find_related_project(self.playlist.yt_id, additional_bad_words=bad_words)
         if not recs:
             recommends.root.add_leaf(i18n['No recommendations'])
             return

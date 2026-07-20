@@ -31,11 +31,24 @@ from textual.widgets import Footer, RichLog
 from textual.screen import ModalScreen, Screen
 
 from episode_names.Modals.DialogueModals import YesNoBox, ConfirmMessageBox
-from episode_names.Screens import EpisodeScreen, TemplateScreen, SettingsScreen, ModularInterface, LinkingScreen
+from episode_names.Screens import (
+    EpisodeScreen,
+    TemplateScreen,
+    SettingsScreen,
+    ModularInterface,
+    LinkingScreen,
+)
 from episode_names.Utility import MenuProvider, i18n, user_setup
 from episode_names.Utility.db import Settings
 from episode_names.Utility.db_aux_utility import previous_versions
-from episode_names.__init__ import __version__, __author__, __license__, __appname__, __appauthor__, __folder_version__
+from episode_names.__init__ import (
+    __version__,
+    __author__,
+    __license__,
+    __appname__,
+    __appauthor__,
+    __folder_version__,
+)
 
 
 def mirror_s_srk(this_key: str) -> str | None:
@@ -46,39 +59,36 @@ def mirror_s_srk(this_key: str) -> str | None:
     :return:
     """
     try:
-        res = (Settings
-               .select()
-               .where(Settings.key == this_key)
-               .limit(1)
-               .get())
+        res = Settings.select().where(Settings.key == this_key).limit(1).get()
         return res.value
     except Settings.DoesNotExist:
         return None
+
 
 def mirror_s_uosk(this_key: str, this_value: str) -> bool:
     """
     # ! Same as mirror_s_srk
 
-    :param this_key: 
-    :param this_value: 
-    :return: 
+    :param this_key:
+    :param this_value:
+    :return:
     """
-    return (Settings
-            .insert(key=this_key, value=this_value)
-            .on_conflict(
-                conflict_target=Settings.key,
-                update={Settings.value: this_value}
-            )
-            .execute())
+    return (
+        Settings.insert(key=this_key, value=this_value)
+        .on_conflict(conflict_target=Settings.key, update={Settings.value: this_value})
+        .execute()
+    )
+
 
 class DebugLog(ModalScreen[bool]):
     """
     Sad Excuse for a quick debug log functionality, I am totally aware that there is a way with Textual
     to achieve the same thing without this.
     """
+
     BINDINGS = [
-        ("escape", "back", i18n['Cancel']),
-        ("ctrl+c", "quit", i18n['Quit']),
+        ("escape", "back", i18n["Cancel"]),
+        ("ctrl+c", "quit", i18n["Quit"]),
     ]
 
     def __init__(self, log: RichLog):
@@ -95,17 +105,45 @@ class DebugLog(ModalScreen[bool]):
 
 
 class EpisodeNames(App):
-    CSS_PATH = 'CSS/general.tcss'
+    CSS_PATH = "CSS/general.tcss"
     COMMANDS = {MenuProvider}
     COMMAND_PALETTE_BINDING = "circumflex_accent"
 
+    # TODO: idea: activity graph by amount of written words in description
+    # TODO: new version confirmation dialogue needs styling
+
     BINDINGS = [
-        Binding(key="escape", action="quit_dial", description=i18n['Quit'], show=False),
-        Binding(key="f1", action="switch_mode('episodes')", description=i18n['Episode'], show=False),
-        Binding(key="f2", action="switch_mode('templates')", description=i18n['Templates'], show=False),
-        Binding(key="f3", action="switch_mode('linking')", description=i18n['Linking'], show=False),
-        Binding(key="f6", action="switch_mode('modular')", description=i18n['Modular'], show=False),
-        Binding(key="f7", action="switch_mode('settings')", description=i18n['Settings'], show=False),
+        Binding(key="escape", action="quit_dial", description=i18n["Quit"], show=False),
+        Binding(
+            key="f1",
+            action="switch_mode('episodes')",
+            description=i18n["Episode"],
+            show=False,
+        ),
+        Binding(
+            key="f2",
+            action="switch_mode('templates')",
+            description=i18n["Templates"],
+            show=False,
+        ),
+        Binding(
+            key="f3",
+            action="switch_mode('linking')",
+            description=i18n["Linking"],
+            show=False,
+        ),
+        Binding(
+            key="f6",
+            action="switch_mode('modular')",
+            description=i18n["Modular"],
+            show=False,
+        ),
+        Binding(
+            key="f7",
+            action="switch_mode('settings')",
+            description=i18n["Settings"],
+            show=False,
+        ),
         Binding(key="f8", action="open_debug", description="Debug", show=False),
     ]
 
@@ -114,15 +152,17 @@ class EpisodeNames(App):
         "templates": TemplateScreen,
         "settings": SettingsScreen,
         "linking": LinkingScreen,
-        "modular": ModularInterface
-        #"help": HelpScreen,
+        "modular": ModularInterface,
+        # "help": HelpScreen,
     }
 
     def __init__(self):
-        self.hour_zero = time.time_ns()/1000000
+        self.hour_zero = time.time_ns() / 1000000
         self.dummy_log = RichLog(id="dummy_log")
         self.debug_open = False
-        self.console_title = f"Episode Names - v{__version__}, DB Version: {__folder_version__}"
+        self.console_title = (
+            f"Episode Names - v{__version__}, DB Version: {__folder_version__}"
+        )
         # ? at least for Konsole the set_window_title does not work
         sys.stderr.write(f"\x1b]2;{self.console_title}\x07")
         sys.stderr.flush()
@@ -142,7 +182,7 @@ class EpisodeNames(App):
         if old_versions:
             for each in old_versions:
                 # TODO: make this as unified string somewhere
-                if not mirror_s_srk(f'aknowledge_old_version_{each}'):
+                if not mirror_s_srk(f"aknowledge_old_version_{each}"):
                     unconfirmed.append(each)
         if unconfirmed:
             self.show_old_db_modal(unconfirmed)
@@ -157,24 +197,29 @@ class EpisodeNames(App):
         self.dummy_log.write(this)
 
     def write_log(self, text):
-        delta_time = round(time.time_ns()/1000000 - self.hour_zero,2)
+        delta_time = round(time.time_ns() / 1000000 - self.hour_zero, 2)
         self.dummy_log.write(f"{delta_time} - {text}")
 
     def show_old_db_modal(self, versions: list) -> None:
         if len(versions) <= 0:
             return None
+
         def dialogue_callback(status: bool):
-            if status: # * aka, checkbox checked for aknowledgement
+            if status:  # * aka, checkbox checked for aknowledgement
                 for each in versions:
-                    mirror_s_uosk(f'aknowledge_old_version_{each}', "checked")
+                    mirror_s_uosk(f"aknowledge_old_version_{each}", "checked")
+
         self.app.push_screen(
-            ConfirmMessageBox(i18n.t('Old_Version_blues', {'%%versions%%': ", ".join(versions)}),
-                              aknowledge=True,
-                              confirm_text=i18n['Confirm that you understand and have read']),
-            dialogue_callback)
+            ConfirmMessageBox(
+                i18n.t("Old_Version_blues", {"%%versions%%": ", ".join(versions)}),
+                aknowledge=True,
+                confirm_text=i18n["Confirm that you understand and have read"],
+            ),
+            dialogue_callback,
+        )
 
     def _action_show_templates(self):
-        self.app.switch_mode('templates')
+        self.app.switch_mode("templates")
 
     def action_debug(self):
         """
@@ -183,10 +228,10 @@ class EpisodeNames(App):
         :return:
         """
         # ? currently: Theme Variables:
-        #self.write_raw_log(self.app.theme_variables)
+        # self.write_raw_log(self.app.theme_variables)
         # ? test settings
-        #self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"]))
-        #self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"], False))
+        # self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"]))
+        # self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"], False))
         # ? i18n tests
         self.write_raw_log(i18n.color_map)
 
@@ -209,7 +254,10 @@ class EpisodeNames(App):
         def handle_quit_message(dec: bool):
             if dec:
                 self.action_quit()
-        self.app.push_screen(YesNoBox(i18n["Do you want to quit?"]), handle_quit_message)
+
+        self.app.push_screen(
+            YesNoBox(i18n["Do you want to quit?"]), handle_quit_message
+        )
 
 
 def run_main():

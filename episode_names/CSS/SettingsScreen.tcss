@@ -45,7 +45,7 @@ SettingsScreen {
               border-left: outer $accent;
               border-right: outer $accent;
               border-top: outer $accent;
-              background: $surface-lighten-1;
+              background: $surface;
           }
     }
 
@@ -62,5 +62,27 @@ SettingsScreen {
         border: ascii $accent;
         padding-left: 10;
         padding-right: 10;
+    }
+
+
+    #con_linking, #con_dateformat {
+        .compact_input {
+            width: 1fr;
+            max-width: initial;
+            border-subtitle-color: $secondary;
+        }
+    }
+
+    #con_bad_words {
+        .compact_input {
+            width: 100% !important;
+            max-width: 100%;
+            margin-bottom: 1;
+            border-subtitle-color: $secondary;
+        }
+    }
+
+    #con_backup {
+         border-bottom: outer $panel;
     }
 }

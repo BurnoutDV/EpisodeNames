@@ -11,6 +11,11 @@ CreateEditEpisode {
         }
     }
 
+    .generic_modal_main {
+        max-height: 33;
+        max-width: 150;
+    }
+
     .adjust {
         height: 5;
     }

@@ -65,6 +65,9 @@ class SettingsScreen(Screen):
             with Horizontal(classes='settings', id='con_linking'):
                 yield Input(classes="compact_input", id='in_youtube_api_key')
                 yield Input(classes="compact_input", id='in_youtube_channel_id')
+            with Vertical(classes='settings', id='con_bad_words'):
+                yield Input(classes="compact_input", id='in_bad_words_project', placeholder=i18n['comma separated list'])
+                yield Input(classes="compact_input", id='in_bad_words_video', placeholder=i18n['comma separated list'])
             with Vertical(classes='settings', id='con_backup'): # TODO: use grid por favor
                 with Horizontal():
                     yield Button(label=i18n['Database2JSON Export'] ,id="export_json", classes="danger")
@@ -79,13 +82,21 @@ class SettingsScreen(Screen):
         self.query_exactly_one("#con_dateformat").border_title = i18n['dateformat']
         self.query_exactly_one("#con_linking").border_title = i18n['Youtube Linking']
         self.query_exactly_one("#con_backup").border_title = i18n['Backup']
-        some_settings = Settings.get_keys(['youtube_api_key', 'youtube_channel_id', 'dateformat', 'datetimeformat'])
+        self.query_exactly_one("#con_bad_words").border_title = i18n['Filter Words']
+        some_settings = Settings.get_keys(['youtube_api_key', 'youtube_channel_id', 'dateformat', 'datetimeformat',
+                                           'bad_words_project', 'bad_words_video'])
         in_dateformat: Input = self.query_exactly_one("#in_dateformat")
         in_dateformat.border_subtitle = i18n['Dateformat']
         in_dateformat.value = some_settings.get('dateformat', "")
         in_datetimeformat: Input = self.query_exactly_one("#in_datetimeformat")
         in_datetimeformat.border_subtitle = i18n['Datetimeformat']
         in_datetimeformat.value = some_settings.get('datetimeformat', "")
+        in_bad_words_project: Input = self.query_exactly_one("#in_bad_words_project")
+        in_bad_words_project.border_subtitle = i18n['Project Title Filter Words'] # TODO: add explanation here
+        in_bad_words_project.value = some_settings.get('bad_words_video', "")
+        in_bad_words_video: Input = self.query_exactly_one("#in_bad_words_video")
+        in_bad_words_video.border_subtitle = i18n['Video Title Filter Words']
+        in_bad_words_video.value = some_settings.get('bad_words_video', "")
         in_youtube_api_key: Input = self.query_exactly_one("#in_youtube_api_key")
         in_youtube_api_key.border_subtitle = i18n['YT API Key']
         in_youtube_api_key.value = some_settings.get('youtube_api_key', "")
@@ -160,10 +171,16 @@ class SettingsScreen(Screen):
         theme : Select = self.query_exactly_one("#sel_theme")
         api_key : Input = self.query_exactly_one("#in_youtube_api_key")
         channel_id : Input = self.query_exactly_one("#in_youtube_channel_id")
+        bad_words_project: Input = self.query_exactly_one("#in_bad_words_project")
+        bad_words_video: Input = self.query_exactly_one("#in_bad_words_video")
         if str(date_format.value).strip():
             Settings.update_or_set_key("dateformat", str(date_format.value).strip())
         if str(datetime_format.value).strip():
             Settings.update_or_set_key("datetimeformat", str(datetime_format.value).strip())
+        if str(bad_words_project.value).strip():
+            Settings.update_or_set_key("bad_words_project", str(bad_words_project.value).strip())
+        if str(bad_words_video.value).strip():
+            Settings.update_or_set_key("bad_words_video", str(bad_words_video.value).strip())
         if str(theme.value).strip() and theme.value != self.app.theme:
             Settings.update_or_set_key("textual_theme", str(theme.value).strip())
             self.app.theme = theme.value

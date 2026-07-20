@@ -34,6 +34,21 @@ from textual.screen import ModalScreen
 from episode_names.Utility import i18n
 from episode_names.Utility.db import Episode, Project, YtVideo, YtPlaylist, Folge, TextTemplate, PatternTemplate
 
+class SelectImporter(ModalScreen):
+    """
+    So the idea here is that the import can be a lot more granual or selective..but for that
+    do we need an interface. The biggest problem is how to keep this all in memory and only commit
+    all when the selections are made. Especially problematic is selecting only a few episodes
+    for a specific existing project
+    """
+    def __init__(self):
+        super().__init__()
+
+    def compose(self) -> ComposeResult:
+        pass
+    def on_mount(self) -> None:
+        pass
+
 class SelectExport(ModalScreen[list | None]):
     BINDINGS = [
         Binding(key="escape", action="abort", description=i18n['Cancel'], priority=True),

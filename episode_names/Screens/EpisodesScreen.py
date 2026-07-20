@@ -49,6 +49,7 @@ class EpisodeScreen(Screen):
         Binding(key="q", action="copy_text", description=i18n['Copy Text'], group=copy_group, tooltip=i18n['Copy Text Tooltip']),
         Binding(key="w", action="copy_text_md", description=i18n['Copy2MD'], group=copy_group, tooltip=i18n['Copy Text MD Tooltip']),
         Binding(key="t", action="copy_tags", description=i18n['Copy Tags'], group=copy_group, tooltip=i18n['Copy Tags Tooltip']),
+        # TODO: directly assign yt video by providing id
         Binding(key="k", action="create_project_menu", description=i18n['Create Project']),
         Binding(key="l", action="edit_project_menu", description=i18n['Edit current Project']),
         Binding(key="ctrl+p", action="create_md", description=i18n['Create MD']),
@@ -313,7 +314,7 @@ class EpisodeScreen(Screen):
         this: Folge = self._select_episode_dataview()
         if not this:
             return
-        md_format = """##### %%counter1%%\n\n* Titel: `%%first_line%%`\n\n* Beschreibung:\n\n  ```markdown\n  %%description%%\n  ```\n"""
+        md_format = """##### #%%counter1%%\n\n* Titel: `%%first_line%%`\n\n* Beschreibung:\n\n  ```markdown\n  %%description%%\n  ```\n"""
         text = create_description_text(this, self.dateformat)
         parts = text.split("\n")
         rests = ""
@@ -323,7 +324,7 @@ class EpisodeScreen(Screen):
             rests+= each + "\n"
         md_format = md_format.replace("%%counter1%%", str(this.counter1))
         md_format = md_format.replace("%%first_line%%", parts[0])
-        md_format = md_format.replace("%%description%%", rests.strip())
+        md_format = md_format.replace("%%description%%", rests.replace("\n", "\n  ").strip())
         pyperclip.copy(md_format)
         self.app.notify(md_format, title=i18n['Markdown copied to clipboard'])
 

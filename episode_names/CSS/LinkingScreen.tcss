@@ -45,4 +45,20 @@ LinkingScreen {
         border: outer $accent;
         background: $surface;
     }
+
+    #top_bar {
+        height: 1;
+    }
+
+    #top_label {
+        width: 4fr;
+    }
+
+    #col_filter_template {
+        border-left: outer $secondary;
+        width: 2fr;
+        &:focus {
+            border-left: outer $accent;
+        }
+    }
 }

@@ -14,6 +14,10 @@ LinkVideoModal {
         }
     }
 
+    .ytvideo {
+            background: $error-darken-3;
+        }
+
     #left {
         width: 3fr;
         #yt_desc_addon {

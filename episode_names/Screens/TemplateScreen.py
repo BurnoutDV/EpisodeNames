@@ -31,6 +31,7 @@ from episode_names.Modals.DialogueModals import YesNoBox
 from episode_names.Utility import i18n
 from episode_names.Utility.custom_widgets import EnPageMarker
 from episode_names.Utility.db import TextTemplate, PatternTemplate
+from episode_names.Utility.custom_widgets import TextArea2
 
 class TemplateScreen(Screen):
     BINDINGS = [
@@ -58,12 +59,12 @@ class TemplateScreen(Screen):
         self.filter_bar = Input(id="filter", placeholder=i18n['Enter Filter here'], classes="small_input")
         self.templates = Tree("Label", id="template_list")
         self.pattern_name = Input(id="pattern_name", placeholder="Name of the Pattern", disabled=True)
-        self.pattern = TextArea(id="pattern", disabled=True, soft_wrap=True, show_line_numbers=True)
+        self.pattern = TextArea2(id="pattern", disabled=True, soft_wrap=True, show_line_numbers=True)
         self.desc_prefix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
         self.desc_suffix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
         self.desc_a_prefix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
         self.desc_a_suffix = Input(placeholder=i18n['empty'], classes="compact_input", disabled=True)
-        self.tags = TextArea(id='tags', disabled=True, soft_wrap=True)
+        self.tags = TextArea2(id='tags', disabled=True, soft_wrap=True)
         self.helper = ListView(id='helper')
         # TODO: define own highlighting scheme for textarea
         self.current_pattern: PatternTemplate = None
@@ -259,8 +260,6 @@ class TemplateScreen(Screen):
             self.tags.move_cursor((0,0))
         else:
             self.tags.clear()
-
-    # TODO: on change self.tags update title of template thingy to show number of characters
 
     def update_pattern_list(self, title_filter=""):
         # Todo: you use this to learn about reactive attributes

@@ -172,52 +172,64 @@ def find_related_project(YtDbPlay_id: str,
 # ? Idee: bestimmte Teile automatisiert erkenne, wie Meta daten blöcke anhand von
 # ? playlist links oder chapter notes daran das sie ein bestimmtes zeit format ham
 
-def find_related_folge(RevFolge: Folge,
-                      max_hits: int= 10) -> dict[int: Folge] | None:
+def find_related_folge(rev_entity: Folge | YtVideo,
+                       max_hits: int= 10,
+                       additional_bad_words: list | None = None) -> dict[int: Folge] | None:
     folgen_list = {}
+    if isinstance(rev_entity, Folge):
+        deep_knowledge = True
+    elif isinstance(rev_entity, YtVideo):
+        deep_knowledge = False
+    else:
+        return None # cannot handle whatever else there might be
     # ? do not show projects that already have a link?
     #! Step 1: direct hits with 100% same title
-    hits = None
-    if RevFolge.db_project: # decreases search hits:
-        try:
-            hits = (Episode.select()
-                    .where(Episode.project == RevFolge.db_project)
-                    .where(Episode.title.contains(RevFolge.title)).
-                    limit(15))
-        except Episode.DoesNotExist:
-            pass # nothing happened
-    else:
-        try:
-            hits = (Episode.select()
-                    .where(Episode.title.contains(RevFolge.title)).
-                    limit(15))
-        except Episode.DoesNotExist:
-            pass
-    if hits:
-        for episode in hits:
-            folgen_list[episode.id] = Folge.from_episode(episode)
-            if len(folgen_list) > max_hits:
-                return folgen_list
+    if deep_knowledge: # this really does only work if we have a perfectly fine extracted Folge
+        hits = None
+        if rev_entity.db_project: # decreases search hits:
+            try:
+                hits = (Episode.select()
+                        .where(Episode.project == rev_entity.db_project)
+                        .where(Episode.title.contains(rev_entity.title)).
+                        limit(15))
+            except Episode.DoesNotExist:
+                pass # nothing happened
+        else:
+            try:
+                hits = (Episode.select()
+                        .where(Episode.title.contains(rev_entity.title)).
+                        limit(15))
+            except Episode.DoesNotExist:
+                pass
+        if hits:
+            for episode in hits:
+                folgen_list[episode.id] = Folge.from_episode(episode)
+                if len(folgen_list) > max_hits:
+                    return folgen_list
     #! Step 2: we look for chunks of title shards in other titles..this is where the spam begins
     # TODO: this is language thing, has to be configurable
     sentence_parts = ["der", "die", "das", "the", "and", "und", "bei", "von", "from", "to",
                       "zu", "auf", "nach", "vor", "dann", "mit", "zum", "zur", "kein", "wie",
                       "was", "wer", "wo", "welche", "des", "dem", "viel", "ein", "eine", "in"]
-    pieces = RevFolge.title.split(" ") # I boldly assume multi word titles
+    if additional_bad_words: # TODO: make those be regex aware # TODO: write texts that explain that
+        sentence_parts = sentence_parts + additional_bad_words
+    # YtVideo and Folge both got a title
+    pieces = rev_entity.title.split(" ") # I boldly assume multi-word titles
     shatter = []
     for each in pieces: # I think this is "expensive" and can be done "cheaper" in a pythonic way
         if each not in sentence_parts:
             shatter.append(each)
     hits = {}
+    project = rev_entity.db_project if deep_knowledge else rev_entity.pl_project_id
     if len(shatter): # ? for all sentence parts we search everywhere
         for part in shatter:
             if len(part) <= 0: # shouldnt happen
                 continue
             try:
-                if RevFolge.db_project:
+                if project:
                     res: list[Episode] = (Episode
                            .select()
-                           .where(Episode.project == RevFolge.db_project)
+                           .where(Episode.project == project)
                            .where(Episode.title.ilike(f'%{part}%')))
                 else:
                     res: list[Episode] = (Episode
@@ -231,15 +243,17 @@ def find_related_folge(RevFolge: Folge,
     if hits:
         # rank stuff
         for key, other_folge in hits.items():
-            dist = SequenceMatcher(None, RevFolge.title , other_folge.title)
+            dist = SequenceMatcher(None, rev_entity.title, other_folge.title)
             hits[key] = {'folge': other_folge, 'dist': dist.ratio(), 'note': 'title_matcher'}
         sortiert = sorted(hits, key=lambda x: hits[x]['dist'], reverse=True)
         for each in sortiert:
             if each not in folgen_list:
+                hits[each]['folge'].notes = str(hits[each]['dist']) # * cross miss use of a field that isnt used here
                 folgen_list[each] = hits[each]['folge']
             if len(folgen_list) > max_hits:
                 return folgen_list
     # ! Step 3: by episode number, pretty forward when in project, otherwise not
+    # search by regex?
     if not folgen_list:
         return None
     return folgen_list
