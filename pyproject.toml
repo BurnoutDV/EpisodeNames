@@ -13,7 +13,8 @@ dependencies = ["pyperclip~=1.11.0",
 "textual-autocomplete>=4.0",
 "platformdirs>=4.5",
 "rich>=14.2",
-"textual-fspicker~=0.6"]
+"textual-fspicker~=0.6",
+"textdistance>=4.6"]
 license = { file = "LICENSE" }
 keywords = ["tui", "terminal", "textual", "cli", "episode_names"]
 classifiers = [
@@ -52,3 +53,13 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["episode_names"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportUnknownMemberType = false
+reportInconsistentConstructor = false
+reportMissingTypeStubs = false
+reportUnknownVariableType = false
+reportUnknownLambdaType = false
+reportUnknownArgumentType = false
+reportGeneralTypeIssues = false

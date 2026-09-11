@@ -61,64 +61,6 @@ def new_episode(previous: Folge,
         current.description = new_description
     return current
 
-
-def debug_create_template():
-    this = """Episode $$counter2$$ des Gold Road DLCs - $$session$$
-
-Let's Play ESO #$$counter1$$ ##$$counter2$$ - $$title$$ [Gold Road]
-
-Mo-Do, So auch Live auf Twitch: https://www.twitch.tv/burnoutdv 17-20 Uhr
-Playlist: https://www.youtube.com/playlist?list=PLAFz5ZZJ21wO_nLvLprFRAyxN3YilrARe
-Gold Road Playlist: https://www.youtube.com/playlist?list=PLAFz5ZZJ21wN4zSdcr2GqPesmrdQ--7gj
-Aufnahme vom $$record_date$$ - #$$counter1$$ - ##$$counter2$$"""
-    TextTemplate.insert(pattern=this).execute()
-
-def create_dummy_data():
-    p_id = Project.update_or_create(Playlist("Elder Scrolls Online", "default"))
-    this = """Episode $$counter2$$ des Gold Road DLCs - $$session$$
-
-Let's Play ESO #$$counter1$$ ##$$counter2$$ - $$title$$ [Gold Road]
-
-Mo-Do, So auch Live auf Twitch: https://www.twitch.tv/burnoutdv 17-20 Uhr
-Playlist: https://www.youtube.com/playlist?list=PLAFz5ZZJ21wO_nLvLprFRAyxN3YilrARe
-Gold Road Playlist: https://www.youtube.com/playlist?list=PLAFz5ZZJ21wN4zSdcr2GqPesmrdQ--7gj
-Aufnahme vom $$record_date$$ - #$$counter1$$ - ##$$counter2$$"""
-    TextTemplate.create_new(PatternTemplate("Default", "$$counter1$$ - $$title$$"))
-    TextTemplate.update(id = 0).where(TextTemplate.title == "Default").execute()
-    # ^this is slightly cursed, but makes sure id=0 is always the default entry
-    t_id = TextTemplate.update_or_create(PatternTemplate("ESO-Gold Road", this))
-    first = Folge(
-        title="Gefangene des Schicksals",
-        db_template=t_id,
-        db_project=p_id,
-        counter1=1924,
-        counter2=1,
-        session="Sitzung 1",
-        description="",
-        recording_date=date.fromisoformat("2024-09-09")
-    )
-    last_id = Episode.create_new(first)
-    other_titles = [
-        "Mephalas Strang der Geheimnisse",
-        "Azuras Laterne",
-        "Boethias Klinge",
-        "Holomagan-Kloster",
-        "Schrein der unweigerlichen Geheimnisse",
-        "Ereignisse auf Schienen"
-    ]
-    for title in other_titles:
-        old = Episode.as_Folge_by_uid(last_id)
-        new = new_episode(old, new_title=title)
-        last_id = Episode.create_new(new)
-    # Other Projects, empty
-    Project.create_new(Playlist("Elden Ring DLC", "default"))
-    Project.create_new(Playlist("Spellforce 3", "default"))
-    Project.create_new(Playlist("Viewfinder", "legacy"))
-    Project.create_new(Playlist("Outer Wilds", "legacy"))
-    Project.create_new(Playlist("Metro Exodus", "legacy"))
-    Project.create_new(Playlist("Dragon Age Origins", "disgrace"))
-    print("Done with my dastardly task master")
-
 def multisub(subs, subject):
     """
     Simultaneously perform all substitutions on the subject string.
@@ -260,7 +202,3 @@ def user_setup(name, author, version) -> None:
         init_db(db_path) # * ~home/.local/share/episode_names/[ver]
     else: # create new db file
         init_db(db_path, creation=True)
-
-if __name__ == "__main__":
-    init_db()
-    create_dummy_data()

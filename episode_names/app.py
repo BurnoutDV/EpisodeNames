@@ -40,7 +40,7 @@ from episode_names.Screens import (
     LinkingScreen,
 )
 from episode_names.Utility import MenuProvider, i18n, user_setup
-from episode_names.Utility.db import Settings
+from episode_names.Utility.db import Settings, EditDelta
 from episode_names.Utility.db_aux_utility import previous_versions
 from episode_names.__init__ import (
     __version__,
@@ -146,7 +146,7 @@ class EpisodeNames(App):
             description=i18n["Settings"],
             show=False,
         ),
-        #Binding(key="f8", action="open_debug", description="Debug", show=False),
+        Binding(key="f8", action="open_debug", description="Debug", show=False),
     ]
 
     MODES = {
@@ -160,6 +160,7 @@ class EpisodeNames(App):
     }
 
     def __init__(self):
+        user_setup(__appname__, __appauthor__, __folder_version__)
         self.hour_zero = time.time_ns() / 1000000
         self.dummy_log = RichLog(id="dummy_log")
         self.debug_open = False
@@ -236,7 +237,8 @@ class EpisodeNames(App):
         # self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"]))
         # self.write_raw_log(Settings.get_keys(["db_version", "textual_theme", "bdsgsfg"], False))
         # ? i18n tests
-        self.write_raw_log(i18n.color_map)
+        #self.write_raw_log(i18n.color_map)
+        self.write_raw_log(EditDelta.get_all_episode_edits(392))
 
     def _action_open_debug(self):
         if self.debug_open:
@@ -265,7 +267,6 @@ class EpisodeNames(App):
 
 def run_main():
     print("Running App")
-    user_setup(__appname__, __appauthor__, __folder_version__)
     app = EpisodeNames()
     app.run()
 

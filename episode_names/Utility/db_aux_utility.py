@@ -32,7 +32,7 @@ from pathlib import Path
 from platformdirs import user_data_dir
 
 from episode_names.Utility.db import Episode, TextTemplate, Project, Settings, Playlist, normalize_datetime, YtDbPlay, \
-    YtDbVid, YtDbNumbering
+    YtDbVid, YtDbNumbering, EditDelta
 from episode_names.__init__ import __folder_version__, __previous_db_versions__,__appname__, __appauthor__
 
 def export_to_json(file_path: Path | str = "export.json", categories: list | None = None) -> bool:
@@ -44,8 +44,8 @@ def export_to_json(file_path: Path | str = "export.json", categories: list | Non
     :param categories: ['local', 'remote', 'app']
     :return: bool
     """
-    if not categories or (isinstance(categories, list) and len(categories) == 0):
-        categories = ['local', 'remote', 'app'] # per default everything is in it
+    if categories is None or (isinstance(categories, list) and len(categories) == 0):
+        categories = ['local', 'remote', 'app', 'stats'] # per default everything is in it
     the_great_export = {}
     # * select raw db objects, no need for DTOs
     # * Projects
@@ -177,6 +177,26 @@ def export_to_json(file_path: Path | str = "export.json", categories: list | Non
             logging.error(f"Exception: {e}")
             return False
         the_great_export['YtDbNumbering'] = yt_play_vid_link
+    # * %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # * Statistics
+    # * %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    if 'stats' in categories:
+        delta_stats = []
+        try:
+            res: list[EditDelta] = EditDelta.select()
+            for each in res:
+                delta_stats.append({
+                    'size': each.size,
+                    'note': each.note,
+                    'episode_id': each.episode_id if each.episode_id else None,
+                    'project_id': each.project_id if each.project_id else None,
+                    'template_id': each.template_id if each.template_id else None,
+                    'edit_date': each.edit_date.isoformat(),
+                })
+        except Exception as e:
+            logging.error(f"Exception: {e}")
+            return False
+        the_great_export['YtDbNumbering'] = delta_stats
     # * Settings
     if 'app' in categories:
         all_settings = {}

@@ -33,7 +33,7 @@ from textual.screen import Screen
 from episode_names.__init__ import __default_dateformat__, __default_datetimeformat__
 from episode_names.Utility import i18n
 from episode_names.Utility.custom_widgets import EnPageMarker
-from episode_names.Utility.db import Project, Playlist, Episode, Settings, Folge, TextTemplate, PatternTemplate
+from episode_names.Utility.db import Project, Playlist, Episode, Settings, Folge, TextTemplate, PatternTemplate, EditDelta
 from episode_names.Utility.order import new_episode, create_description_text
 from episode_names.Modals import CreateEditProject, AssignTemplate, CreateEditEpisode, WriteNoteModal
 
@@ -262,13 +262,14 @@ class EpisodeScreen(Screen):
             self.app.push_screen(WriteNoteModal(this), project_note_callback)
 
     def _action_edit_entry(self):
-        def handle_edit_entry_response(this: Folge or None):
-            if not this:
+        this = self._select_episode_dataview()
+        def handle_edit_entry_response(that: Folge or None):
+            if not that:
                 return
-            Episode.update_or_create(this)
+            Episode.update_or_create(that)
+            EditDelta.maybe_add_episode_delta(this, that)
             self._refill_table_with_project(self.current_project)
 
-        this = self._select_episode_dataview()
         if this:
             self.app.push_screen(CreateEditEpisode(this), handle_edit_entry_response)
 
@@ -349,34 +350,36 @@ class EpisodeScreen(Screen):
                 return
             if not isinstance(notice, Folge): # * hard type check
                 return
+            EditDelta.maybe_add_episode_delta(this, notice)
             Episode.update_or_create(notice)
             self._create_markdown_breakdown() # update overview
         self.app.push_screen(WriteNoteModal(this), note_callback)
 
     def _action_open_episode_desc_addon(self):
-        def desc_addon_callback(notice: Folge or None):
-            if not notice:
-                return
-            if not isinstance(notice, Folge): # * hard type check
-                return
-            Episode.update_or_create(notice)
         this = self._select_episode_dataview()
+        def desc_addon_callback(desc_addon: Folge or None):
+            if not desc_addon:
+                return
+            if not isinstance(desc_addon, Folge): # * hard type check
+                return
+            EditDelta.maybe_add_episode_delta(this, desc_addon)
+            Episode.update_or_create(desc_addon)
         if not this:
             return
         self.app.push_screen(WriteNoteModal(this, option="desc_addon"), desc_addon_callback)
 
     def _action_open_episode_description(self):
-        def description_callback(notice: Folge or None):
-            if not notice:
-                return
-            if not isinstance(notice, Folge): # * hard type check
-                return
-            Episode.update_or_create(notice)
         this = self._select_episode_dataview()
+        def description_callback(description: Folge or None):
+            if not description:
+                return
+            if not isinstance(description, Folge): # * hard type check
+                return
+            EditDelta.maybe_add_episode_delta(this, description)
+            Episode.update_or_create(description)
         if not this:
             return
         self.app.push_screen(WriteNoteModal(this, option="description"), description_callback)
-
 
     def _refill_table_with_project(self,
            p_uid: int,

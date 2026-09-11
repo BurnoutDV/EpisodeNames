@@ -64,7 +64,8 @@ class SelectExport(ModalScreen[list | None]):
         selections = [
             ("Local Data", "local"),
             ("Youtube Data", "remote"),
-            ("Application", "app")
+            ("Application", "app"),
+            ("Statistics", "stats")
         ]
         with Vertical(classes="generic_modal_main"):
             Label(i18n['Select data export categories'])

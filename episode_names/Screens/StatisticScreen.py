@@ -46,6 +46,7 @@ class StatisticScreen(Screen):
     # TODO: presets/saved views
     # TODO: date ranges
     # TODO: adjust amount of outputted lines
+    # TODO: search modal that indexes all texts (of one project/all) and adds them for searching for names
 
     def __init__(self):
         self.dateformat = __default_dateformat__
@@ -55,7 +56,8 @@ class StatisticScreen(Screen):
 
     def compose(self) -> ComposeResult:
         yield EnPageMarker("f4")
-        yield DataTable(id="dt_stat_view", zebra_stripes=True, cursor_type="row")
+        with Vertical():
+            yield DataTable(id="dt_stat_view", zebra_stripes=True, cursor_type="row")
         yield Footer(id="heinz")
 
     def on_mount(self) -> None:
@@ -92,8 +94,8 @@ class StatisticScreen(Screen):
                 key=each.id
             )
 
-    def write_raw_log(self, this, additional_text=""):
-        self.app.write_raw_log(this, additional_text)
+    def write_raw_log(self, this: str, additional_text: str=""):
+        self.app.write_raw_log(this, additional_text) # pyright: ignore[reportAttributeAccessIssue]
 
-    def write_log(self, text):
-        self.app.write_log(text)
+    def write_log(self, text: str):
+        self.app.write_log(text) # pyright: ignore[reportAttributeAccessIssue]

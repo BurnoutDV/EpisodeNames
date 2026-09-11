@@ -3,7 +3,7 @@ __author__ = "Bruno DeVries"
 __license__ = "GPL-3"
 __appname__ = "episode_names"
 __appauthor__ = "BurnoutDV" # my preferred name so to speak
-__folder_version__ = "1.2-dev" # in case of breaking changes, change this
+__folder_version__ = "1.2" # in case of breaking changes, change this
 
 __previous_db_versions__ = ['1.0', '1.1'] # ? maybe enrich these with information about the deltas
 
@@ -62,4 +62,8 @@ Bigger Update to add some features I dreamed up in 6 Months
 * added descriptions & tooltips for the episode keybindings
 * partial export (but not import)
 * the first time I expose an API key to the world
+## 0.3.2
+* adding writing of statistics for episodes, paved way for templates and projects
+* statistic screen shows something..but far from what I envisioned
+* this update is mostly so I can work with a version that isnt riddled with some annoying bugs that 0.2.4 had
 """

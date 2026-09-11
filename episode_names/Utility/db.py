@@ -18,11 +18,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
+import copy
 from typing import Literal
 
 from dataclasses import dataclass
 from datetime import datetime, date
 
+import textdistance
 from peewee import (
     DatabaseProxy,
     DateTimeField,
@@ -93,7 +95,7 @@ class Folge:
         :return:
         """
         if not isinstance(other, Folge):
-            return NotImplemented
+            raise NotImplemented("'other' is not a Folge")
         if (self.title == other.title
             and self.counter1 == other.counter1
             and self.counter2 == other.counter2
@@ -104,6 +106,56 @@ class Folge:
             and self.recording_date == other.recording_date):
             return True
         return False
+
+    @staticmethod
+    def copy_overwrite(other: 'Folge', **attributes) -> 'Folge':
+        """
+        Copies everything from an existing Folge but overwrites the given attributes with the
+        new stuff. Used to make sure that all data are retained in forms
+        :param other: another Folge
+        :param kwargs: all attributes that a Folge can have
+        :return: Folge
+        :raises: Attribute Error if inexitent attribute is written, Value Error if no FOlge is provided
+        """
+        if not isinstance(other, Folge):
+            raise ValueError(f"Parameter other is not of type 'Folge', got '{other.__class__.__name__}' instead")
+            # TypeSafe Python is a myth
+        new_folge = copy.deepcopy(other)
+        for key, value in attributes.items():
+            if not hasattr(new_folge, key):
+                raise AttributeError(f"Folge does not have attribute '{key}'")
+            setattr(new_folge, key, value)
+        return new_folge
+
+
+    def get_diff_other(self, other: 'Folge') -> dict[str: int]:
+        """
+        Gives the precise difference between this object and another Folge. Its not mighty useful when comparing
+        to any other Folge (except maybe you want to know if parts are the same) but it has its use if you edit
+        one and then want to know how big the difference is
+        You get an empty dict aka. a falsy thing if the 'other' is not up to the task
+        The compared fields are 'title', 'session', 'description', 'desc_addon', 'notes'
+
+        :param Folge other: the other Folge to be compared to
+        :rtype: dict
+        :return: a dictionary with a the name of a field and the levenstein difference in that line
+        :raises: NotImplemented when 'other' is not a Folge
+        """
+        if not isinstance(other, Folge):
+            raise NotImplemented("'other' is not Folge") # still unsure if I want that or just an empty dict
+            #return {}
+        _c = ['title', 'session', 'description', 'desc_addon', 'notes']
+        diff_set = {}
+        for each in _c:
+            this_one = self.__getattribute__(each)
+            the_other = other.__getattribute__(each)
+            # * Notes for instances can be None and levenstein does not like comparing None with ""
+            if this_one is None:
+                this_one = ""
+            if the_other is None:
+                the_other = ""
+            diff_set[each] = textdistance.levenshtein.distance(this_one, the_other)
+        return diff_set
 
     @staticmethod
     def from_episode(this: 'Episode') -> 'Folge':
@@ -488,6 +540,7 @@ class Project(BaseModel):
             return fields
         except Episode.DoesNotExist:  # this should never happen
             return None
+    
     @staticmethod
     def get_tree_as_playlist() -> list[Playlist] | None:
         """
@@ -664,6 +717,7 @@ class Episode(BaseModel):
     notes = TextField(null=True)
     yt_link = CharField(null=True)
     yt_human_touch = BooleanField(default=False, null=True)
+    # IDEA: tag for "uncompleted work" - easy toggle bar to mark things where I am not done
 
     template = ForeignKeyField(TextTemplate, lazy_load=True)
     project = ForeignKeyField(Project, lazy_load=True)
@@ -867,16 +921,17 @@ class Settings(BaseModel):
     def get_keys(keys: list[str], error_fallback: bool = True) -> dict[str: str] | None:
         """
         Retrieves multiple keys at once
-        :param keys: list of settings keys to be retrieved
-        :param error_fallback: if False will return None if **any** of the keys doesn't exist
+        :param list[str] keys: list of settings keys to be retrieved
+        :param bool error_fallback: if False will return None if **any** of the keys doesn't exist
             but won't return partial lists either
+        :rtype dict[str: str] | None
         :return: either a dictionary key: value with the keys or None
         """
         try:
             res = (Settings
                    .select(Settings.key, Settings.value)
                    .where(Settings.key << keys))
-            response = {}
+            response: dict = {}
             for item in res:
                 response[item.key] = item.value
                 keys.remove(item.key)
@@ -923,7 +978,7 @@ class YtDbPlay(BaseModel): # ? this name is hell
             for each in res:
                 flood.append(YtPlaylist.from_yt_db_play(each))
             return flood
-        except YtDbPlay.DoesNotExist:
+        except BaseModel.DoesNotExist:
             return None
 
     @staticmethod
@@ -1153,6 +1208,97 @@ class YtDbNumbering(BaseModel):
         res = (YtDbNumbering.delete().where(YtDbNumbering.playlist_id == playlist_id).execute())
         return res
 
+class EditDelta(BaseModel):
+    size = IntegerField(default=0)
+    note = TextField(null=True) # ? this has no immediate use, but I thought i might add the kind of change later
+    episode = ForeignKeyField(Episode, null=True, lazy_load=True)
+    project = ForeignKeyField(Project, null=True, lazy_load=True)
+    template = ForeignKeyField(TextTemplate, null=True, lazy_load=True)
+    edit_date = DateTimeField(default=datetime.now)  # yes yes, its basically the _CREATE_ time..but then
+    # we are comparing edits here no?
+
+    # the following is opiniated and I wonder if I can make this part of a config somehow
+    # limits for Episode
+    desc_diff:int = 20 # characters
+    desc_addon: int = 10 # Characters
+    title_diff:int = 5 # characters
+
+    @staticmethod
+    def maybe_add_episode_delta(folge_a: Folge, folge_b: Folge) -> bool:
+        """
+        Adds an entry to the EditDelta table if the difference between two Folge is big enough, "big enought" is
+        currently defined as:
+        Description: 20 characters
+        Desc_Addon: 10 Characters
+        Titel: 5 Characters
+        :param folge_a:
+        :param folge_b:
+        :return:
+        """
+        # ! probably fails for description and desc addon alone
+        if not isinstance(folge_a, Folge):
+            return False
+        if not folge_a.db_uid: # floating Folges dont work here
+            return False
+        # ? maybe check if both are actually the same Folge_ID?
+        diff_set = folge_a.get_diff_other(folge_b)
+        if not diff_set:
+            return False
+        if diff_set['description'] < EditDelta.desc_diff \
+            and diff_set['desc_addon'] < EditDelta.desc_addon \
+            and diff_set['title'] < EditDelta.title_diff:
+            return False
+        combined_size = diff_set['description'] + diff_set['desc_addon'] + diff_set['title']
+        res = (EditDelta.insert(
+            size=combined_size,
+            note=None,
+            episode_id=folge_a.db_uid,
+            edit_date=datetime.now()
+            ).execute())
+        if not res:
+            return False
+        return True
+
+    @staticmethod
+    def get_all_episode_edits(episode_id: int, ordered: Literal['desc', 'asc'] = 'asc') -> list[tuple[datetime, int]]:
+        """
+        Get all edits of one episode in order of datetime as size in changed characters
+
+        :param episode_id: the internal database id of the episode
+        :param ordered: asc or desc for ascending vs descending from now to cavepeople
+        :return: a list, containing a tuple of datetime, (int) characters changed per entry
+        """
+        # ? I think in theory I could have used the datetime as key for an dictionary or rather the ISO String
+        # ? but that would open up the edge case that for some weird reason two edits happened on the same millisecond
+        # * blantant
+        # ! more
+        try:
+            if ordered == "asc":
+                res: list[EditDelta] = (EditDelta  # its a blantant lie, res is NOT just a list
+                                        .select(EditDelta.edit_date, EditDelta.size)
+                                        .order_by(EditDelta.edit_date.asc())
+                                        .where(EditDelta.episode_id == episode_id)
+                                        )
+            else:
+                res: list[EditDelta] = (EditDelta  # its a blantant lie, res is NOT just a list
+                                        .select(EditDelta.edit_date, EditDelta.size)
+                                        .order_by(EditDelta.edit_date.desc())
+                                        .where(EditDelta.episode_id == episode_id)
+                                        )
+        except EditDelta.DoesNotExist:
+            return []
+        if len(res) <= 0:
+            return []
+        edits = []
+        for each in res:
+            print(each)
+            edits.append((each.edit_date, each.size))
+        return edits
+
+    @staticmethod
+    def get_all_project_edits(project_id: int, order: str = "asc") -> list[tuple[datetime, int]]:
+        pass
+
 def init_db(db_path="episoden_names.db",  creation=False):
     """
     Creates a new db or connects to one if the name exists
@@ -1169,12 +1315,12 @@ def init_db(db_path="episoden_names.db",  creation=False):
     db.connect()
     if creation:
         db.create_tables([Episode, Project, TextTemplate, Settings,
-                          YtDbPlay, YtDbVid, YtDbNumbering])
+                          YtDbPlay, YtDbVid, YtDbNumbering, EditDelta])
         Project.create_raw("Default Project")
         (Settings # is that a global variable? how do it even have that here?
             .insert(key='db_version', value=__folder_version__)
             .on_conflict(
-                conflict_target=Settings.key,
+                conflict_target=Settings.key, # TODO is that the correct on conflict form?
                 update={Settings.value: __folder_version__})
             .execute()
         )

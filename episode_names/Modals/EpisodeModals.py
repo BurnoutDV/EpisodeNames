@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
-
+import copy
 # Copyright 2024 by BurnoutDV, <development@burnoutdv.com>
 #
 # This file is part of EpisodeNames.
@@ -21,6 +21,7 @@
 # @license GPL-3.0-only <https://www.gnu.org/licenses/gpl-3.0.en.html>
 
 from datetime import datetime, date
+from copy import copy
 
 from textual import on
 from textual.app import ComposeResult
@@ -191,7 +192,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
                     title="",
                     description="",
                     desc_addon="",
-                    notes="",
+                    notes=None,
                     yt_link=None,
                     db_project=current_play.db_uid
                 )
@@ -257,7 +258,7 @@ class CreateEditEpisode(ModalScreen[Folge or None]):
         except ValueError:
             rec_date = None
         try:
-            return Folge(
+            return Folge.copy_overwrite(self.copy_from,
                 title=self.gui_title.value,
                 db_uid=self.copy_from.db_uid if self.copy_from else -1,
                 db_project=self.copy_from.db_project if self.copy_from else 0,
@@ -343,16 +344,16 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
     CSS_PATH = "../CSS/EpisodeModals.tcss"
 
     def __init__(self, notes: Folge | Playlist | str | None = None, option: str = "note"):
-        self.notes: Folge | Playlist | str | None = None
+        self.notes: Folge | Playlist | str | None = None # TODO: have I ever used this by calling None?
         if isinstance(notes, Folge):
             self.modus = 0
-            self.notes = notes
+            self.notes = copy(notes) # this is important because otherwise its by reference and we change the "original"
         elif isinstance(notes, Playlist):
             self.modus = 1
-            self.notes = notes
+            self.notes = copy(notes)
         else:
             self.modus = 2
-            self.notes = notes
+            self.notes = notes # * this is just a string
         if option == "desc_addon":
             self.note_attr = "desc_addon"
             self.modus = 3
@@ -406,18 +407,18 @@ class WriteNoteModal(ModalScreen[Folge | Playlist | str | None]):
         else:
             self.title = i18n['Generic Note Window']
 
-    def action_reset(self):
+    def _action_reset(self):
         """
-        Returns text area to init status
+        Returns text area to init status, apparently not functional rn
         :return:
         """
         note_text: TextArea = self.query_exactly_one("#note_area")
-        note_text.load_text("") # reset
+        note_text.text = ""
         self.on_mount()
 
     @on(Button.Pressed, "#btn_save")
     def _action_save(self):
-        note_text: TextArea = self.query_exactly_one("#note_area")
+        note_text = self.query_one("#note_area", TextArea2)
         if self.modus <= 4: # Episode OR Playlist
             self.notes.__setattr__(self.note_attr, note_text.text.strip())
             self.dismiss(self.notes)

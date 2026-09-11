@@ -107,17 +107,19 @@ class LinkingScreen(Screen):
         with Vertical(id="main_vert"):
             with Horizontal(id="top_bar"):
                 yield Label("Channel: bla false", id="top_label")
-                yield Select(id="col_filter_template", options=[], compact=True)
+                yield Select(id="col_filter_template", options=[], compact=True) # # pyright: ignore[reportCallIssue]
             with Horizontal(id="main_divider"):
                 yield self.playlists
                 yield self.videos
         yield Footer()
 
-    def _on_mount(self) -> None:
+    def _on_mount(self, event) -> None:
         # retrieve playlist regex rules (more than one)?
         settings = Settings.get_keys(['youtube_api_key', 'youtube_channel_id', 'yt_title_regex'])
         if 'youtube_api_key' in settings and 'youtube_channel_id' in settings:
-            self.query_exactly_one("#no_go_blocker").remove()
+            self.query_one("#no_go_blocker", Vertical).remove()
+            self.api_key = settings['youtube_api_key']
+            self.channel_id = settings['youtube_channel_id']
         else:
             text = i18n['missing_settings_general']
             if not 'youtube_api_key' in settings:
@@ -125,22 +127,20 @@ class LinkingScreen(Screen):
             if not 'youtube_channel_id' in settings:
                 text += i18n['missing_channel_id']
             text += i18n['missing_settings_tail']
-            self.query_exactly_one("#md_no_go").document.update(text)
-        self.api_key = settings['youtube_api_key']
-        self.channel_id = settings['youtube_channel_id']
+            self.query_exactly_one("#md_no_go", MarkdownViewer).document.update(text)
         if not 'yt_title_regex' in settings:
             Settings.update_or_set_key('yt_title_regex', LinkingScreen.YT_TITLE_REGEX_DEFAULT)
 
         playlists_data: list[YtPlaylist] = YtDbPlay.get_all_from_db()
         self.uti_playlist_tree_fill(playlists_data)
         # TreeFilterSelect
-        filters: Select = self.query_one("#col_filter_template")
+        filters = self.query_one("#col_filter_template", Select)
         filters.set_options([
             (i18n["Default" ], 0),
             (i18n['#, published'], 1)
         ])
         filters.value = 0
-
+        return super()._on_mount(event)
 
     def uti_playlist_tree_fill(self, playlists_data: list[YtPlaylist]):
         self.playlists.focus()
@@ -300,7 +300,7 @@ class LinkingScreen(Screen):
             self.populate_video_view(self.current_playlist)
 
     def action_debug_pl_data(self):
-        thetree : Tree = self.query_exactly_one("#playlists")
+        thetree = self.query_one("#playlists", Tree)
         current = thetree.cursor_node
         if not current.data:
             self.app.write_log("F4: ALT+Q: No current data")
